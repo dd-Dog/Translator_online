@@ -12,8 +12,16 @@ Translator_online/
 ├── src/
 │   ├── agents/            # Agent核心模块
 │   │   ├── __init__.py
-│   │   ├── translator.py  # 主翻译Agent
-│   │   └── strategies/    # 翻译策略
+│   │   ├── translator.py  # 简单翻译Agent（向后兼容）
+│   │   ├── pipeline.py    # 工作流编排器
+│   │   ├── planner.py     # 任务规划Agent
+│   │   ├── translator_a.py # 主译Agent
+│   │   ├── translator_b.py # 对照译Agent
+│   │   ├── checker.py     # 质量检查Agent
+│   │   ├── stylist.py     # 风格化Agent
+│   │   ├── aggregator.py  # 最终整合Agent
+│   │   ├── workflow.py    # 工作流数据结构
+│   │   └── strategies/    # 翻译策略（简单模式）
 │   │       ├── __init__.py
 │   │       ├── base.py    # 策略基类
 │   │       ├── voting.py  # 投票策略
@@ -23,7 +31,9 @@ Translator_online/
 │   │   ├── base.py        # 模型基类
 │   │   ├── openai.py      # OpenAI接口
 │   │   ├── gemini.py      # Google Gemini接口
-│   │   └── claude.py      # Anthropic Claude接口
+│   │   ├── qwen.py        # Qwen接口
+│   │   ├── deepseek.py    # DeepSeek接口
+│   │   └── claude.py      # Anthropic Claude接口（可选）
 │   ├── utils/             # 工具类
 │   │   ├── __init__.py
 │   │   ├── logger.py      # 日志工具
@@ -36,10 +46,12 @@ Translator_online/
 
 ## 核心设计理念
 
-1. **可扩展性**：通过抽象基类设计，易于添加新的大模型接口
-2. **策略模式**：支持多种翻译策略（投票、加权、置信度评估等）
-3. **配置驱动**：通过配置文件管理模型和策略参数
-4. **模块化**：各模块职责清晰，便于维护和测试
+1. **多阶段工作流**：将翻译任务分解为多个专业阶段，每个阶段由专门的Agent负责
+2. **模型分工**：不同模型负责不同任务，发挥各自优势（Gemini擅长多语言翻译，Qwen擅长中文表达）
+3. **质量保证**：通过双重翻译、一致性检查、质量评分确保翻译质量
+4. **可解释性**：记录每个阶段的修改和原因，便于研究和论文撰写
+5. **可扩展性**：通过抽象基类设计，易于添加新的大模型接口和Agent
+6. **配置驱动**：通过配置文件管理模型和策略参数
 
 ## 未来优化方向
 
@@ -108,7 +120,46 @@ async def main():
 asyncio.run(main())
 ```
 
-### 多模型投票策略
+### 多阶段工作流翻译（推荐）
+
+```python
+from src.agents.pipeline import TranslationPipeline
+from src.models.openai import OpenAIModel
+from src.models.gemini import GeminiModel
+from src.models.qwen import QwenModel
+
+# 创建各个阶段的模型
+planner_model = OpenAIModel(model_name="gpt-4", api_key="...")
+translator_a_model = GeminiModel(model_name="gemini-pro", api_key="...")
+translator_b_model = QwenModel(model_name="qwen-turbo", api_key="...")
+checker_model = OpenAIModel(model_name="gpt-4", api_key="...")
+stylist_model = QwenModel(model_name="qwen-turbo", api_key="...")
+aggregator_model = OpenAIModel(model_name="gpt-4", api_key="...")
+
+# 创建工作流
+pipeline = TranslationPipeline(
+    planner_model=planner_model,
+    translator_a_model=translator_a_model,
+    translator_b_model=translator_b_model,
+    checker_model=checker_model,
+    stylist_model=stylist_model,
+    aggregator_model=aggregator_model,
+    glossary={"AI": "人工智能"},  # 术语表
+    style="academic"  # 风格：general, academic, official, colloquial
+)
+
+# 执行翻译
+result = await pipeline.translate(
+    text="Machine learning is a subset of AI.",
+    source_lang="en",
+    target_lang="zh"
+)
+
+print(result.translated_text)
+print(result.explainability_report)  # 可解释性报告
+```
+
+### 简单模式（向后兼容）
 
 ```python
 from src.agents.translator import TranslatorAgent

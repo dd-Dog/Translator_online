@@ -3,6 +3,7 @@
 """
 
 from .translator import TranslatorAgent
+from .pipeline import TranslationPipeline
 
-__all__ = ["TranslatorAgent"]
+__all__ = ["TranslatorAgent", "TranslationPipeline"]
 
