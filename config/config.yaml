@@ -1,0 +1,21 @@
+# 翻译Agent主配置
+app:
+  name: "Multi-Model Translator Agent"
+  version: "1.0.0"
+  log_level: "INFO"
+  log_file: "logs/translator.log"
+
+# 翻译策略配置
+strategy:
+  type: "voting"  # voting, weighted, confidence
+  params:
+    min_models: 2  # 最少使用的模型数量
+    timeout: 30    # 请求超时时间（秒）
+
+# 默认翻译参数
+translation:
+  source_lang: "auto"  # 自动检测
+  target_lang: "zh"    # 目标语言
+  temperature: 0.3     # 温度参数
+  max_tokens: 2000     # 最大token数
+

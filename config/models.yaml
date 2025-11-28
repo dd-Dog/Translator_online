@@ -1,0 +1,35 @@
+# 大模型配置
+models:
+  openai:
+    enabled: true
+    provider: "openai"
+    model: "gpt-4"
+    api_key_env: "OPENAI_API_KEY"
+    base_url: null  # 使用默认，或自定义
+    params:
+      temperature: 0.3
+      max_tokens: 2000
+  
+  gemini:
+    enabled: true
+    provider: "gemini"
+    model: "gemini-pro"
+    api_key_env: "GEMINI_API_KEY"
+    params:
+      temperature: 0.3
+  
+  claude:
+    enabled: false  # 可选启用
+    provider: "claude"
+    model: "claude-3-opus-20240229"
+    api_key_env: "ANTHROPIC_API_KEY"
+    params:
+      temperature: 0.3
+      max_tokens: 2000
+
+# 模型优先级（用于加权策略）
+model_weights:
+  openai: 0.4
+  gemini: 0.4
+  claude: 0.2
+

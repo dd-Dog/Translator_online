@@ -1,0 +1,17 @@
+# 核心依赖
+openai>=1.0.0
+google-generativeai>=0.3.0
+anthropic>=0.18.0
+
+# 工具库
+pyyaml>=6.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# 日志和工具
+loguru>=0.7.0
+
+# 可选：用于高级功能
+numpy>=1.24.0
+pandas>=2.0.0
+
