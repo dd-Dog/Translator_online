@@ -29,7 +29,9 @@ async def example_pipeline_translation():
     
     translator_a_model = GeminiModel(
         model_name="gemini-pro",
-        api_key=os.getenv("GEMINI_API_KEY")
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # 使用OpenRouter API密钥
+        base_url="https://openrouter.ai/api/v1",
+        use_openrouter=True
     )
     
     translator_b_model = QwenModel(

@@ -12,13 +12,18 @@ models:
       max_tokens: 2000
   
   # Gemini (用于Translator-A主译)
+  # 通过OpenRouter调用（国内可用）
   gemini:
     enabled: true
     provider: "gemini"
-    model: "gemini-pro"
-    api_key_env: "GEMINI_API_KEY"
+    model: "google/gemini-2.5-flash"  # OpenRouter模型ID，也可用 google/gemini-2.5-pro
+    api_key_env: "OPENROUTER_API_KEY"  # 使用OpenRouter API密钥
+    base_url: "https://openrouter.ai/api/v1"
+    use_openrouter: true
     params:
       temperature: 0.3
+      http_referer: "https://github.com/dd-Dog/Translator_online"
+      x_title: "Translator Agent"
   
   # Qwen (用于Translator-B对照译和Stylist)
   qwen:
@@ -43,14 +48,18 @@ models:
       max_tokens: 2000
   
   # Claude (可选)
+  # 通过OpenRouter调用（国内可用）
   claude:
     enabled: false
     provider: "claude"
-    model: "claude-3-opus-20240229"
-    api_key_env: "ANTHROPIC_API_KEY"
+    model: "anthropic/claude-3.5-haiku"  # OpenRouter模型ID，也可用 anthropic/claude-3.7-sonnet
+    api_key_env: "OPENROUTER_API_KEY"  # 使用OpenRouter API密钥
+    base_url: "https://openrouter.ai/api/v1"
     params:
       temperature: 0.3
       max_tokens: 2000
+      http_referer: "https://github.com/dd-Dog/Translator_online"
+      x_title: "Translator Agent"
 
 # 工作流Agent配置
 workflow:

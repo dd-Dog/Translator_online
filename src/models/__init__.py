@@ -8,6 +8,7 @@ from .openai import OpenAIModel
 from .gemini import GeminiModel
 from .qwen import QwenModel
 from .deepseek import DeepSeekModel
+from .claude import ClaudeModel
 
 __all__ = [
     "BaseModel",
@@ -15,5 +16,6 @@ __all__ = [
     "GeminiModel",
     "QwenModel",
     "DeepSeekModel",
+    "ClaudeModel",
 ]
 

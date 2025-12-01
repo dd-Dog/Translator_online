@@ -54,22 +54,26 @@ def create_models() -> list:
         else:
             logger.warning("未找到OpenAI API密钥")
     
-    # Gemini模型
+    # Gemini模型（通过OpenRouter）
     if models_config.get('gemini', {}).get('enabled', False):
-        api_key = os.getenv(models_config['gemini'].get('api_key_env', 'GEMINI_API_KEY'))
+        api_key = os.getenv(models_config['gemini'].get('api_key_env', 'OPENROUTER_API_KEY'))
         if api_key:
+            gemini_config = models_config['gemini']
+            use_openrouter = gemini_config.get('use_openrouter', True)
             model = GeminiModel(
-                model_name=models_config['gemini']['model'],
+                model_name=gemini_config['model'],
                 api_key=api_key,
-                **models_config['gemini'].get('params', {})
+                base_url=gemini_config.get('base_url'),
+                use_openrouter=use_openrouter,
+                **gemini_config.get('params', {})
             )
             if model.validate_config():
                 models.append(model)
-                logger.info(f"已加载模型: Gemini {model.model_name}")
+                logger.info(f"已加载模型: Gemini {model.model_name} (通过OpenRouter: {use_openrouter})")
             else:
                 logger.warning("Gemini模型配置无效")
         else:
-            logger.warning("未找到Gemini API密钥")
+            logger.warning("未找到Gemini API密钥（请设置OPENROUTER_API_KEY）")
     
     return models
 
