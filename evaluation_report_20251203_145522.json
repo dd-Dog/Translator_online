@@ -1,0 +1,267 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-03T14:55:22.817789",
+    "total_samples": 10,
+    "successful": 10,
+    "failed": 0
+  },
+  "summary": {
+    "avg_bleu": 0.9154235734923908,
+    "avg_cer": 0.05555378831694622,
+    "avg_system_score": 0.85
+  },
+  "by_domain": {
+    "technology": {
+      "count": 6,
+      "avg_bleu": 0.9470217452943358,
+      "avg_system_score": 0.8500000000000001
+    },
+    "general": {
+      "count": 2,
+      "avg_bleu": 0.875,
+      "avg_system_score": 0.8500000000000001
+    },
+    "business": {
+      "count": 1,
+      "avg_bleu": 0.8799999999999999,
+      "avg_system_score": 0.8500000000000001
+    },
+    "environment": {
+      "count": 1,
+      "avg_bleu": 0.8421052631578948,
+      "avg_system_score": 0.8500000000000001
+    }
+  },
+  "details": [
+    {
+      "id": 1,
+      "domain": "technology",
+      "source": "Machine learning is a subset of artificial intelligence.",
+      "reference": "机器学习是人工智能的一个子集。",
+      "translation": "机器学习是人工智能的一个子领域。",
+      "bleu": 0.9032258064516129,
+      "cer": 0.0625,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 2,
+      "domain": "technology",
+      "source": "The future of AI is promising and full of possibilities.",
+      "reference": "人工智能的未来充满希望和无限可能。",
+      "translation": "人工智能的未来充满希望，蕴含无限可能。",
+      "bleu": 0.8823529411764706,
+      "cer": 0.10526315789473684,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 3,
+      "domain": "technology",
+      "source": "Natural language processing enables computers to understand human language.",
+      "reference": "自然语言处理使计算机能够理解人类语言。",
+      "translation": "自然语言处理使计算机能够理解人类语言。",
+      "bleu": 1.0,
+      "cer": 0.0,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 4,
+      "domain": "technology",
+      "source": "Deep learning has revolutionized the field of computer vision.",
+      "reference": "深度学习彻底改变了计算机视觉领域。",
+      "translation": "深度学习彻底改变了计算机视觉领域。",
+      "bleu": 1.0,
+      "cer": 0.0,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 5,
+      "domain": "technology",
+      "source": "Neural networks are inspired by the structure of the human brain.",
+      "reference": "神经网络的灵感来自人脑的结构。",
+      "translation": "神经网络的灵感来源于人脑的结构。",
+      "bleu": 0.896551724137931,
+      "cer": 0.0625,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 6,
+      "domain": "technology",
+      "source": "Data is the fuel that powers machine learning algorithms.",
+      "reference": "数据是驱动机器学习算法的燃料。",
+      "translation": "数据是驱动机器学习算法的燃料。",
+      "bleu": 1.0,
+      "cer": 0.0,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 7,
+      "domain": "general",
+      "source": "The weather is beautiful today.",
+      "reference": "今天天气很好。",
+      "translation": "今天天气真好。",
+      "bleu": 0.8333333333333334,
+      "cer": 0.0,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 8,
+      "domain": "general",
+      "source": "She enjoys reading books in her free time.",
+      "reference": "她喜欢在空闲时间读书。",
+      "translation": "她喜欢在空闲时间阅读书籍。",
+      "bleu": 0.9166666666666666,
+      "cer": 0.15384615384615385,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 9,
+      "domain": "business",
+      "source": "The company announced its quarterly earnings yesterday.",
+      "reference": "该公司昨天公布了季度收益。",
+      "translation": "该公司昨日公布了其季度收益。",
+      "bleu": 0.8799999999999999,
+      "cer": 0.07142857142857142,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    },
+    {
+      "id": 10,
+      "domain": "environment",
+      "source": "Climate change is one of the most pressing issues of our time.",
+      "reference": "气候变化是我们这个时代最紧迫的问题之一。",
+      "translation": "气候变化是当今时代最紧迫的问题之一。",
+      "bleu": 0.8421052631578948,
+      "cer": 0.1,
+      "system_score": {
+        "adequacy": 0.8500000000000001,
+        "fluency": 0.8500000000000001,
+        "terminology": 0.8500000000000001,
+        "overall": 0.8500000000000001
+      },
+      "processing_stages": [
+        "Task Planning",
+        "Primary Translation (Translator-A)",
+        "Comparison Translation (Translator-B)",
+        "Quality Checking",
+        "Styling",
+        "Final Aggregation"
+      ]
+    }
+  ]
+}
