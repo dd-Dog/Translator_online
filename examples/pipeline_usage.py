@@ -21,10 +21,12 @@ async def example_pipeline_translation():
     print("多阶段翻译工作流示例")
     print("=" * 60)
     
-    # 创建各个模型
+    # 创建各个模型（通过OpenRouter）
     planner_model = OpenAIModel(
         model_name="gpt-4",
-        api_key=os.getenv("OPENAI_API_KEY")
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # 使用OpenRouter API密钥
+        base_url="https://openrouter.ai/api/v1",
+        use_openrouter=True
     )
     
     translator_a_model = GeminiModel(
@@ -41,7 +43,9 @@ async def example_pipeline_translation():
     
     checker_model = OpenAIModel(
         model_name="gpt-4",
-        api_key=os.getenv("OPENAI_API_KEY")
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # 使用OpenRouter API密钥
+        base_url="https://openrouter.ai/api/v1",
+        use_openrouter=True
     )
     
     stylist_model = QwenModel(
@@ -51,7 +55,9 @@ async def example_pipeline_translation():
     
     aggregator_model = OpenAIModel(
         model_name="gpt-4",
-        api_key=os.getenv("OPENAI_API_KEY")
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # 使用OpenRouter API密钥
+        base_url="https://openrouter.ai/api/v1",
+        use_openrouter=True
     )
     
     # 创建术语表（可选）

@@ -76,7 +76,7 @@ class TranslationPipeline:
         if glossary is not None:
             self.stylist.glossary = glossary
         if style is not None:
-            self.stylist.style = style
+            self.stylist.style_type = style
         
         # 阶段1: 任务规划
         task_plan = await self.planner.plan(text, source_lang, target_lang)

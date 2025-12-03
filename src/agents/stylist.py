@@ -22,7 +22,7 @@ class Stylist:
         """
         self.model = model
         self.glossary = glossary or {}
-        self.style = style
+        self.style_type = style  # 重命名为style_type避免与方法名冲突
     
     async def style(
         self,
@@ -64,7 +64,7 @@ class Stylist:
             "colloquial": "口语化风格",
             "general": "通用风格"
         }
-        style_name = style_map.get(self.style, "通用风格")
+        style_name = style_map.get(self.style_type, "通用风格")
         
         prompt = f"""你是一个专业的文本风格化专家。请对以下翻译文本进行术语统一和风格调整。
 

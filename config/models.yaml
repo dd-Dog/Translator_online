@@ -1,15 +1,19 @@
 # 大模型配置
 models:
   # OpenAI (用于Planner, Checker, Aggregator)
+  # 通过OpenRouter调用（国内可用）
   openai:
     enabled: true
     provider: "openai"
-    model: "gpt-4"
-    api_key_env: "OPENAI_API_KEY"
-    base_url: null  # 使用默认，或自定义
+    model: "gpt-4"  # OpenRouter会自动转换为 openai/gpt-4 (gpt-3.5-turbo在某些地区不可用)
+    api_key_env: "OPENROUTER_API_KEY"  # 使用OpenRouter API密钥
+    base_url: "https://openrouter.ai/api/v1"
+    use_openrouter: true
     params:
       temperature: 0.3
       max_tokens: 2000
+      http_referer: "https://github.com/dd-Dog/Translator_online"
+      x_title: "Translator Agent"
   
   # Gemini (用于Translator-A主译)
   # 通过OpenRouter调用（国内可用）

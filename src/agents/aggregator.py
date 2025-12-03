@@ -58,6 +58,20 @@ class Aggregator:
         
         response = await self.model.translate(request)
         
+        # 构建提示词
+        prompt = self._build_aggregation_prompt(
+            source_text, drafts, checker_report, stylist_result, segment_id
+        )
+        
+        request = TranslationRequest(
+            text=prompt,
+            source_lang="auto",
+            target_lang="zh",
+            temperature=0.3
+        )
+        
+        response = await self.model.translate(request)
+        
         # 解析最终结果
         final_text, explainability = self._parse_aggregation_response(
             response.translated_text,
@@ -86,7 +100,8 @@ class Aggregator:
         source_text: str,
         drafts: List[TranslationDraft],
         checker_report: CheckerReport,
-        stylist_result: StylistResult
+        stylist_result: StylistResult,
+        segment_id: str = ""
     ) -> str:
         """构建整合提示词"""
         prompt = f"""你是一个专业的翻译整合专家。请基于以下信息生成最终翻译和可解释性报告。

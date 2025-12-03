@@ -1,0 +1,83 @@
+[
+  {
+    "id": 1,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "Machine learning is a subset of artificial intelligence.",
+    "reference": "机器学习是人工智能的一个子集。",
+    "domain": "technology"
+  },
+  {
+    "id": 2,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "The future of AI is promising and full of possibilities.",
+    "reference": "人工智能的未来充满希望和无限可能。",
+    "domain": "technology"
+  },
+  {
+    "id": 3,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "Natural language processing enables computers to understand human language.",
+    "reference": "自然语言处理使计算机能够理解人类语言。",
+    "domain": "technology"
+  },
+  {
+    "id": 4,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "Deep learning has revolutionized the field of computer vision.",
+    "reference": "深度学习彻底改变了计算机视觉领域。",
+    "domain": "technology"
+  },
+  {
+    "id": 5,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "Neural networks are inspired by the structure of the human brain.",
+    "reference": "神经网络的灵感来自人脑的结构。",
+    "domain": "technology"
+  },
+  {
+    "id": 6,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "Data is the fuel that powers machine learning algorithms.",
+    "reference": "数据是驱动机器学习算法的燃料。",
+    "domain": "technology"
+  },
+  {
+    "id": 7,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "The weather is beautiful today.",
+    "reference": "今天天气很好。",
+    "domain": "general"
+  },
+  {
+    "id": 8,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "She enjoys reading books in her free time.",
+    "reference": "她喜欢在空闲时间读书。",
+    "domain": "general"
+  },
+  {
+    "id": 9,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "The company announced its quarterly earnings yesterday.",
+    "reference": "该公司昨天公布了季度收益。",
+    "domain": "business"
+  },
+  {
+    "id": 10,
+    "source_lang": "en",
+    "target_lang": "zh",
+    "source": "Climate change is one of the most pressing issues of our time.",
+    "reference": "气候变化是我们这个时代最紧迫的问题之一。",
+    "domain": "environment"
+  }
+]
+
