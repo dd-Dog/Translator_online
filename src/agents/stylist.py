@@ -58,13 +58,31 @@ class Stylist:
     
     def _build_styling_prompt(self, text: str, source_text: Optional[str]) -> str:
         """构建风格化提示词"""
-        style_map = {
-            "academic": "学术论文风格",
-            "official": "正式公文风格",
-            "colloquial": "口语化风格",
-            "general": "通用风格"
-        }
-        style_name = style_map.get(self.style_type, "通用风格")
+        # 加载风格配置
+        style_config = self._load_style_config()
+        
+        if self.style_type in style_config:
+            style_info = style_config[self.style_type]
+            style_name = style_info.get('name', self.style_type)
+            guidelines = style_info.get('guidelines', [])
+            terminology = style_info.get('terminology', {})
+        else:
+            # 兼容旧格式
+            style_map = {
+                "academic": "学术论文风格",
+                "official": "正式公文风格",
+                "colloquial": "口语化风格",
+                "general": "通用风格",
+                "native": "地道风格",
+                "business": "商务风格",
+                "technical": "技术文档风格",
+                "literary": "文学风格",
+                "news": "新闻风格",
+                "legal": "法律风格"
+            }
+            style_name = style_map.get(self.style_type, "通用风格")
+            guidelines = []
+            terminology = {}
         
         prompt = f"""你是一个专业的文本风格化专家。请对以下翻译文本进行术语统一和风格调整。
 
@@ -82,7 +100,20 @@ class Stylist:
                 prompt += f"  {original} -> {unified}\n"
         
         prompt += f"\n2. 统一风格：调整为{style_name}\n"
-        prompt += "3. 保持翻译的准确性和流畅性\n"
+        
+        # 添加风格指导原则
+        if guidelines:
+            prompt += f"\n风格指导原则：\n"
+            for guideline in guidelines:
+                prompt += f"  - {guideline}\n"
+        
+        # 添加风格特定术语
+        if terminology:
+            prompt += f"\n风格特定术语：\n"
+            for term, trans in terminology.items():
+                prompt += f"  {term} -> {trans}\n"
+        
+        prompt += "\n3. 保持翻译的准确性和流畅性\n"
         prompt += "4. 记录所有修改（术语变更和风格变更）\n\n"
         prompt += """请按以下格式返回：
 风格化文本：[处理后的文本]
@@ -134,4 +165,19 @@ class Stylist:
             terminology_changes=terminology_changes,
             style_changes=style_changes
         )
+    
+    def _load_style_config(self) -> dict:
+        """加载风格配置"""
+        try:
+            import yaml
+            from pathlib import Path
+            
+            config_path = Path("config/styles.yaml")
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+                    return config.get('styles', {})
+        except:
+            pass
+        return {}
 

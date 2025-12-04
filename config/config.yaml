@@ -1,7 +1,7 @@
 # 翻译Agent主配置
 app:
   name: "Multi-Model Translator Agent"
-  version: "1.0.0"
+  version: "1.1.0"
   log_level: "INFO"
   log_file: "logs/translator.log"
 
@@ -17,5 +17,17 @@ translation:
   source_lang: "auto"  # 自动检测
   target_lang: "zh"    # 目标语言
   temperature: 0.3     # 温度参数
-  max_tokens: 2000     # 最大token数
+  max_tokens: 500      # 最大token数
+
+# 风格配置（详见 config/styles.yaml）
+style:
+  default: "general"  # 默认风格
+  config_file: "config/styles.yaml"  # 风格配置文件
+  
+# 可选：自定义术语表
+glossary:
+  "AI": "人工智能"
+  "ML": "机器学习"
+  "NLP": "自然语言处理"
+  "CV": "计算机视觉"
 
