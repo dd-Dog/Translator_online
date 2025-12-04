@@ -29,7 +29,8 @@ class TranslationPipeline:
         stylist_model: BaseModel,  # Qwen/DeepSeek
         aggregator_model: BaseModel,  # ChatGPT
         glossary: Optional[Dict[str, str]] = None,
-        style: str = "general"
+        style: str = "general",
+        verbose: bool = False  # 是否启用详细日志
     ):
         """
         初始化翻译工作流
@@ -50,6 +51,7 @@ class TranslationPipeline:
         self.checker = Checker(checker_model)
         self.stylist = Stylist(stylist_model, glossary=glossary, style=style)
         self.aggregator = Aggregator(aggregator_model)
+        self.verbose = verbose
     
     async def translate(
         self,
