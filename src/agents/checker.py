@@ -44,8 +44,8 @@ class Checker:
         
         request = TranslationRequest(
             text=prompt,
-            source_lang="auto",
-            target_lang="zh",
+            source_lang="en",  # Checker提示词是英文
+            target_lang="en",  # 期望返回JSON（英文格式）
             temperature=0.2  # 低温度以获得更稳定的评估
         )
         
@@ -79,28 +79,15 @@ class Checker:
    - 流畅性（Fluency）：翻译是否自然流畅（0-1）
    - 术语准确性（Terminology）：专业术语是否准确（0-1）
 
-请以JSON格式返回结果，格式如下：
+请以JSON格式返回结果。
+
+⚠️ 重要：请**只**返回JSON，不要有任何其他文字说明。必须严格按照以下格式：
+
 {{
-    "consistent": true/false,
-    "conflicts": [
-        {{
-            "issue": "冲突描述",
-            "translator_a_text": "版本A的文本",
-            "translator_b_text": "版本B的文本"
-        }}
-    ],
-    "omissions": [
-        {{
-            "missing_content": "遗漏的内容描述"
-        }}
-    ],
-    "misinterpretations": [
-        {{
-            "original_meaning": "原文意思",
-            "translated_meaning": "翻译后的意思",
-            "issue": "问题描述"
-        }}
-    ],
+    "consistent": true,
+    "conflicts": [],
+    "omissions": [],
+    "misinterpretations": [],
     "quality_scores": {{
         "translator_a": {{
             "adequacy": 0.9,
@@ -116,6 +103,8 @@ class Checker:
         }}
     }}
 }}
+
+如果没有冲突/遗漏/误解，对应数组设为空[]。评分范围0-1，必须给出具体数值。
 """
         return prompt
     

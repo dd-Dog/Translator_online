@@ -76,15 +76,29 @@ class OpenAIModel(BaseModel):
             model_to_use = self.openrouter_model if self.use_openrouter else self.model_name
             
             # 调用API
-            response = self.client.chat.completions.create(
-                model=model_to_use,
-                messages=[
-                    {"role": "system", "content": "You are a professional translator."},
+            # 检查是否需要JSON模式（温度为0.2通常是Checker）
+            system_message = "You are a professional translator."
+            use_json_mode = False
+            
+            if request.temperature <= 0.25 and "JSON" in prompt:
+                system_message = "You are a professional translation quality evaluator. Always respond in valid JSON format."
+                use_json_mode = True
+            
+            create_params = {
+                "model": model_to_use,
+                "messages": [
+                    {"role": "system", "content": system_message},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=request.temperature,
-                max_tokens=request.max_tokens
-            )
+                "temperature": request.temperature,
+                "max_tokens": request.max_tokens
+            }
+            
+            # 启用JSON模式
+            if use_json_mode:
+                create_params["response_format"] = {"type": "json_object"}
+            
+            response = self.client.chat.completions.create(**create_params)
             
             translated_text = response.choices[0].message.content.strip()
             tokens_used = response.usage.total_tokens if response.usage else None
