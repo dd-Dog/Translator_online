@@ -115,6 +115,18 @@ class VerboseTranslationPipeline:
             self.log("Translator-A", f"模型: {self.translator_a.model.model_name}", "INFO")
             self.log("Translator-A", "正在进行多语言通用翻译...", "INFO")
             
+            # 构建并显示提示词
+            translator_a_prompt = self.translator_a._build_translation_prompt(
+                segment_text,
+                task_plan.source_lang,
+                task_plan.target_lang
+            )
+            if self.verbose:
+                print(f"\n💬 输入提示词:")
+                print(f"{'-'*70}")
+                print(translator_a_prompt[:500] + "..." if len(translator_a_prompt) > 500 else translator_a_prompt)
+                print(f"{'-'*70}")
+            
             draft_a = await self.translator_a.translate(
                 segment_text,
                 task_plan.source_lang,
@@ -124,16 +136,33 @@ class VerboseTranslationPipeline:
             
             self.log("Translator-A", f"翻译完成", "SUCCESS")
             if self.verbose:
-                print(f"  翻译结果: {draft_a.translated_text}")
+                print(f"\n📤 模型原始输出:")
+                print(f"{'-'*70}")
+                print(draft_a.translated_text if draft_a.translated_text else "(空)")
+                print(f"{'-'*70}")
+                
+                print(f"\n✅ 解析后的翻译结果: {draft_a.translated_text}")
                 if draft_a.self_check_report:
-                    print(f"  自检置信度: {draft_a.self_check_report.confidence_scores.get('overall', 'N/A')}")
+                    print(f"   自检置信度: {draft_a.self_check_report.confidence_scores.get('overall', 'N/A')}")
                     if draft_a.self_check_report.uncertain_segments:
-                        print(f"  不确定段落: {len(draft_a.self_check_report.uncertain_segments)} 处")
+                        print(f"   不确定段落: {len(draft_a.self_check_report.uncertain_segments)} 处")
             
             # ===== 阶段3: 对照翻译 =====
             self.print_section("阶段3: Translator-B - 对照翻译 (Qwen)")
             self.log("Translator-B", f"模型: {self.translator_b.model.model_name}", "INFO")
             self.log("Translator-B", "正在进行对照翻译（擅长中文自然表达）...", "INFO")
+            
+            # 构建并显示提示词
+            translator_b_prompt = self.translator_b._build_translation_prompt(
+                segment_text,
+                task_plan.source_lang,
+                task_plan.target_lang
+            )
+            if self.verbose:
+                print(f"\n💬 输入提示词:")
+                print(f"{'-'*70}")
+                print(translator_b_prompt[:500] + "..." if len(translator_b_prompt) > 500 else translator_b_prompt)
+                print(f"{'-'*70}")
             
             draft_b = await self.translator_b.translate(
                 segment_text,
@@ -144,9 +173,14 @@ class VerboseTranslationPipeline:
             
             self.log("Translator-B", f"翻译完成", "SUCCESS")
             if self.verbose:
-                print(f"  翻译结果: {draft_b.translated_text}")
+                print(f"\n📤 模型原始输出:")
+                print(f"{'-'*70}")
+                print(draft_b.translated_text if draft_b.translated_text else "(空)")
+                print(f"{'-'*70}")
+                
+                print(f"\n✅ 解析后的翻译结果: {draft_b.translated_text}")
                 if draft_b.self_check_report:
-                    print(f"  自检置信度: {draft_b.self_check_report.confidence_scores.get('overall', 'N/A')}")
+                    print(f"   自检置信度: {draft_b.self_check_report.confidence_scores.get('overall', 'N/A')}")
             
             # 对比两个翻译
             if self.verbose:
@@ -163,33 +197,54 @@ class VerboseTranslationPipeline:
             self.log("Checker", f"模型: {self.checker.model.model_name}", "INFO")
             self.log("Checker", "正在对比两个翻译版本，进行质量评估...", "INFO")
             
-            checker_report = await self.checker.check(
-                segment_text,
-                draft_a,
-                draft_b,
-                segment_id
+            # 构建并显示提示词
+            checker_prompt = self.checker._build_checking_prompt(segment_text, draft_a, draft_b)
+            if self.verbose:
+                print(f"\n💬 输入提示词:")
+                print(f"{'-'*70}")
+                print(checker_prompt[:800] + "..." if len(checker_prompt) > 800 else checker_prompt)
+                print(f"{'-'*70}")
+            
+            # 调用Checker（会打印原始响应）
+            from src.models.base import TranslationRequest
+            checker_request = TranslationRequest(
+                text=checker_prompt,
+                source_lang="en",
+                target_lang="en",
+                temperature=0.2
             )
+            checker_response = await self.checker.model.translate(checker_request)
+            
+            if self.verbose:
+                print(f"\n📤 模型原始输出 (JSON):")
+                print(f"{'-'*70}")
+                print(checker_response.translated_text if checker_response.translated_text else "(空)")
+                print(f"{'-'*70}")
+            
+            # 解析响应
+            checker_report = self.checker._parse_check_response(checker_response.translated_text, segment_id)
             
             self.log("Checker", "质量检查完成", "SUCCESS")
             if self.verbose:
-                print(f"\n检查结果:")
+                print(f"\n✅ 解析后的检查结果:")
                 print(f"  一致性: {'✅ 一致' if segment_id in checker_report.consistent_segments else '⚠️ 存在冲突'}")
                 print(f"  冲突数: {len(checker_report.conflicting_segments)}")
                 print(f"  遗漏数: {len(checker_report.omissions)}")
                 print(f"  误解数: {len(checker_report.misinterpretations)}")
                 
                 if checker_report.conflicting_segments:
-                    print(f"\n  冲突详情:")
+                    print(f"\n  ⚠️ 冲突详情:")
                     for conflict in checker_report.conflicting_segments[:2]:
                         print(f"    问题: {conflict.get('issue', 'N/A')[:100]}...")
                 
                 if segment_id in checker_report.quality_scores:
                     score = checker_report.quality_scores[segment_id]
-                    print(f"\n  MQM质量评分:")
+                    print(f"\n  📊 MQM质量评分（两个翻译的平均分）:")
                     print(f"    充分性 (Adequacy): {score.adequacy:.2f}")
                     print(f"    流畅性 (Fluency): {score.fluency:.2f}")
                     print(f"    术语准确性 (Terminology): {score.terminology:.2f}")
                     print(f"    总体评分 (Overall): {score.overall:.2f}")
+                    print(f"\n  说明: 这是对翻译A和翻译B评分的平均值")
             
             # 选择最佳翻译
             best_draft = self._select_best_draft(draft_a, draft_b, checker_report)
@@ -203,7 +258,19 @@ class VerboseTranslationPipeline:
             self.log("Stylist", f"风格类型: {self.stylist.style_type}", "INFO")
             if self.stylist.glossary:
                 self.log("Stylist", f"使用术语表: {len(self.stylist.glossary)} 条", "INFO")
+                if self.verbose:
+                    print(f"  术语表内容:")
+                    for k, v in list(self.stylist.glossary.items())[:5]:
+                        print(f"    {k} → {v}")
             self.log("Stylist", "正在进行风格化处理...", "INFO")
+            
+            # 构建并显示提示词
+            stylist_prompt = self.stylist._build_styling_prompt(best_draft.translated_text, segment_text)
+            if self.verbose:
+                print(f"\n💬 输入提示词:")
+                print(f"{'-'*70}")
+                print(stylist_prompt[:600] + "..." if len(stylist_prompt) > 600 else stylist_prompt)
+                print(f"{'-'*70}")
             
             stylist_result = await self.stylist.style(
                 best_draft.translated_text,
@@ -212,6 +279,13 @@ class VerboseTranslationPipeline:
             
             self.log("Stylist", "风格化完成", "SUCCESS")
             if self.verbose:
+                print(f"\n📤 模型原始输出:")
+                print(f"{'-'*70}")
+                # Stylist返回的是结构化结果，显示styled_text
+                print(stylist_result.styled_text if stylist_result.styled_text else "(空)")
+                print(f"{'-'*70}")
+                
+                print(f"\n✅ 风格化对比:")
                 print(f"  风格化前: {best_draft.translated_text}")
                 print(f"  风格化后: {stylist_result.styled_text}")
                 
@@ -230,6 +304,20 @@ class VerboseTranslationPipeline:
             self.log("Aggregator", f"模型: {self.aggregator.model.model_name}", "INFO")
             self.log("Aggregator", "正在整合所有结果，生成最终翻译...", "INFO")
             
+            # 构建并显示提示词
+            aggregator_prompt = self.aggregator._build_aggregation_prompt(
+                segment_text,
+                [draft_a, draft_b],
+                checker_report,
+                stylist_result,
+                segment_id
+            )
+            if self.verbose:
+                print(f"\n💬 输入提示词:")
+                print(f"{'-'*70}")
+                print(aggregator_prompt[:700] + "..." if len(aggregator_prompt) > 700 else aggregator_prompt)
+                print(f"{'-'*70}")
+            
             final_result = await self.aggregator.aggregate(
                 segment_text,
                 [draft_a, draft_b],
@@ -240,27 +328,35 @@ class VerboseTranslationPipeline:
             
             self.log("Aggregator", "整合完成", "SUCCESS")
             if self.verbose:
-                print(f"  最终翻译: {final_result.translated_text}")
+                print(f"\n📤 模型原始输出:")
+                print(f"{'-'*70}")
+                print(final_result.translated_text if final_result.translated_text else "(空)")
+                print(f"{'-'*70}")
+                
+                print(f"\n✅ 最终翻译: {final_result.translated_text}")
                 
                 if final_result.explainability_report.final_quality_score:
                     final_score = final_result.explainability_report.final_quality_score
                     original_score = checker_report.quality_scores.get(segment_id)
                     
-                    print(f"\n  质量评分变化:")
+                    print(f"\n  📊 质量评分变化:")
                     if original_score:
-                        print(f"    Checker评分: {original_score.overall:.2f}")
-                        print(f"    最终评分: {final_score.overall:.2f}")
-                        print(f"    提升: {final_score.overall - original_score.overall:+.2f}")
+                        print(f"    Checker评分（改进前）: {original_score.overall:.2f}")
+                        print(f"      - 充分性: {original_score.adequacy:.2f}")
+                        print(f"      - 流畅性: {original_score.fluency:.2f}")
+                        print(f"      - 术语: {original_score.terminology:.2f}")
+                        print(f"    最终评分（改进后）: {final_score.overall:.2f}")
+                        print(f"      - 充分性: {final_score.adequacy:.2f}")
+                        print(f"      - 流畅性: {final_score.fluency:.2f}")
+                        print(f"      - 术语: {final_score.terminology:.2f}")
+                        print(f"    提升幅度: {final_score.overall - original_score.overall:+.2f}")
+                        print(f"\n  说明: Checker评分是对翻译A和B的平均分")
+                        print(f"        最终评分 = Checker评分 + 0.05（风格化提升）")
                     else:
                         print(f"    最终评分: {final_score.overall:.2f}")
-                    
-                    print(f"\n  最终质量详情:")
-                    print(f"    充分性: {final_score.adequacy:.2f}")
-                    print(f"    流畅性: {final_score.fluency:.2f}")
-                    print(f"    术语准确性: {final_score.terminology:.2f}")
                 
                 if final_result.explainability_report.modifications:
-                    print(f"\n  修改记录: {len(final_result.explainability_report.modifications)} 处")
+                    print(f"\n  📝 修改记录: {len(final_result.explainability_report.modifications)} 处")
                     for mod in final_result.explainability_report.modifications[:3]:
                         print(f"    [{mod.get('stage', 'N/A')}] {mod.get('reason', 'N/A')[:50]}...")
             

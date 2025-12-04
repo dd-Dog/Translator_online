@@ -148,12 +148,29 @@ class Checker:
                 
                 quality_scores = {}
                 scores_data = data.get('quality_scores', {})
+                
+                # 修复循环覆盖问题：取两个translator评分的平均值
+                translator_scores = []
                 for translator, scores in scores_data.items():
+                    translator_scores.append({
+                        'adequacy': scores.get('adequacy', 0.8),
+                        'fluency': scores.get('fluency', 0.8),
+                        'terminology': scores.get('terminology', 0.8),
+                        'overall': scores.get('overall', 0.8)
+                    })
+                
+                # 取平均分
+                if translator_scores:
+                    avg_adequacy = sum(s['adequacy'] for s in translator_scores) / len(translator_scores)
+                    avg_fluency = sum(s['fluency'] for s in translator_scores) / len(translator_scores)
+                    avg_terminology = sum(s['terminology'] for s in translator_scores) / len(translator_scores)
+                    avg_overall = sum(s['overall'] for s in translator_scores) / len(translator_scores)
+                    
                     quality_scores[segment_id] = QualityScore(
-                        adequacy=scores.get('adequacy', 0.8),
-                        fluency=scores.get('fluency', 0.8),
-                        terminology=scores.get('terminology', 0.8),
-                        overall=scores.get('overall', 0.8)
+                        adequacy=avg_adequacy,
+                        fluency=avg_fluency,
+                        terminology=avg_terminology,
+                        overall=avg_overall
                     )
                 
                 return CheckerReport(
