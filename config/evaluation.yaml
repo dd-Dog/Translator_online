@@ -1,0 +1,82 @@
+# 评估模型配置
+
+# 评估模式
+modes:
+  # 开发模式（快速，轻量）
+  development:
+    name: "开发模式"
+    description: "快速评估，适合开发调试"
+    models:
+      use_comet: false
+      use_bleurt: false
+      use_bertscore: true
+    batch_size: 10
+    performance:
+      memory: "3-4GB"
+      time_per_10: "20-30秒"
+  
+  # 论文模式（完整，准确）
+  paper:
+    name: "论文模式"
+    description: "完整评估，适合学术发表"
+    models:
+      use_comet: true
+      use_bleurt: false  # 可选，如果有GPU再开启
+      use_bertscore: true
+      comet_model: "Unbabel/wmt22-cometkiwi-da"  # 轻量版
+    batch_size: 5
+    performance:
+      memory: "6-8GB"
+      time_per_10: "2-3分钟"
+  
+  # 完整模式（所有模型，需要GPU）
+  full:
+    name: "完整模式"
+    description: "所有评估模型，需要GPU"
+    models:
+      use_comet: true
+      use_bleurt: true
+      use_bertscore: true
+      comet_model: "Unbabel/wmt22-comet-da"  # 标准版
+    batch_size: 8
+    performance:
+      memory: "12GB+"
+      time_per_10: "30秒（GPU）"
+
+# 默认模式
+default_mode: "development"
+
+# 综合评分权重配置
+scoring_weights:
+  development:
+    bertscore: 0.50
+    mqm: 0.30
+    bleu: 0.20
+  
+  paper:
+    comet: 0.35
+    bertscore: 0.25
+    mqm: 0.25
+    bleu: 0.15
+  
+  full:
+    comet: 0.30
+    bertscore: 0.20
+    bleurt: 0.15
+    mqm: 0.25
+    bleu: 0.10
+
+# 模型配置
+models:
+  comet:
+    standard: "Unbabel/wmt22-comet-da"      # 标准版，2GB
+    lightweight: "Unbabel/wmt22-cometkiwi-da"  # 轻量版，1.5GB
+    advanced: "Unbabel/XCOMET-XL"           # 高级版，10GB（不推荐笔记本）
+  
+  bertscore:
+    lang: "zh"  # 目标语言
+    model_type: null  # null=自动选择，或指定如"bert-base-chinese"
+  
+  bleurt:
+    checkpoint: "BLEURT-20"  # BLEURT检查点
+

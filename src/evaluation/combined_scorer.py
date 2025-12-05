@@ -196,23 +196,40 @@ class CombinedQualityScorer:
         """
         计算最终综合评分（加权平均）
         
-        权重分配：
-        - COMET: 30% (神经网络，最可靠)
-        - BERTScore: 20% (语义相似度)
-        - BLEURT: 15% (神经网络)
-        - MQM: 25% (人工评估标准)
-        - BLEU: 10% (传统指标)
+        权重分配（自动适应可用模型）：
+        开发模式：
+        - BERTScore: 50%
+        - MQM: 30%
+        - BLEU: 20%
+        
+        论文模式：
+        - COMET: 35%
+        - BERTScore: 25%
+        - MQM: 25%
+        - BLEU: 15%
+        
+        完整模式：
+        - COMET: 30%
+        - BERTScore: 20%
+        - BLEURT: 15%
+        - MQM: 25%
+        - BLEU: 10%
         """
         scores = []
         weights = []
         
+        # 根据可用模型动态分配权重
         if result.comet > 0:
             scores.append(result.comet)
-            weights.append(0.30)
+            weights.append(0.35 if result.bleurt == 0 else 0.30)
         
         if result.bertscore_f1 > 0:
             scores.append(result.bertscore_f1)
-            weights.append(0.20)
+            # 如果没有COMET，BERTScore权重提高
+            if result.comet == 0:
+                weights.append(0.50)
+            else:
+                weights.append(0.25 if result.bleurt == 0 else 0.20)
         
         if result.bleurt > 0:
             scores.append(result.bleurt)
@@ -220,11 +237,19 @@ class CombinedQualityScorer:
         
         if result.mqm_overall > 0:
             scores.append(result.mqm_overall)
-            weights.append(0.25)
+            # 如果没有COMET，MQM权重提高
+            if result.comet == 0:
+                weights.append(0.30)
+            else:
+                weights.append(0.25)
         
         if result.bleu > 0:
             scores.append(result.bleu)
-            weights.append(0.10)
+            # 如果没有COMET，BLEU权重提高
+            if result.comet == 0:
+                weights.append(0.20)
+            else:
+                weights.append(0.15 if result.bleurt == 0 else 0.10)
         
         if not scores:
             return 0.0
