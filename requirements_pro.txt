@@ -1,0 +1,26 @@
+# 专业评估模型依赖
+# V2版本新增
+
+# COMET质量评估模型（推荐）⭐⭐⭐⭐⭐
+unbabel-comet>=2.0.0
+
+# BERTScore语义相似度（推荐）⭐⭐⭐⭐
+bert-score>=0.3.13
+
+# BLEURT评估模型（可选，安装较复杂）
+# bleurt @ git+https://github.com/google-research/bleurt.git
+
+# SacreBLEU（标准BLEU实现）
+sacrebleu>=2.3.0
+
+# 科学计算
+scipy>=1.10.0
+scikit-learn>=1.3.0
+
+# 进度条和可视化
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Sentence Transformers（用于embedding相似度）
+sentence-transformers>=2.2.0
+
