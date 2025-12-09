@@ -1,260 +1,389 @@
-# 多模型翻译Agent
+# 多模型协作翻译系统
 
-基于在线大模型的智能翻译系统，通过集成多个大模型API提高翻译准确率和可靠性。
+一个基于大语言模型的多阶段、多模型协作翻译系统，支持多种语言翻译成中文，并提供专业的质量评估功能。
 
-## 项目结构
+## ✨ 核心特性
 
-```
-Translator_online/
-├── config/                 # 配置文件
-│   ├── config.yaml        # 主配置文件
-│   └── models.yaml        # 模型配置
-├── src/
-│   ├── agents/            # Agent核心模块
-│   │   ├── __init__.py
-│   │   ├── translator.py  # 简单翻译Agent（向后兼容）
-│   │   ├── pipeline.py    # 工作流编排器
-│   │   ├── planner.py     # 任务规划Agent
-│   │   ├── translator_a.py # 主译Agent
-│   │   ├── translator_b.py # 对照译Agent
-│   │   ├── checker.py     # 质量检查Agent
-│   │   ├── stylist.py     # 风格化Agent
-│   │   ├── aggregator.py  # 最终整合Agent
-│   │   ├── workflow.py    # 工作流数据结构
-│   │   └── strategies/    # 翻译策略（简单模式）
-│   │       ├── __init__.py
-│   │       ├── base.py    # 策略基类
-│   │       ├── voting.py  # 投票策略
-│   │       └── weighted.py # 加权策略
-│   ├── models/            # 大模型接口
-│   │   ├── __init__.py
-│   │   ├── base.py        # 模型基类
-│   │   ├── openai.py      # OpenAI接口
-│   │   ├── gemini.py      # Google Gemini接口
-│   │   ├── qwen.py        # Qwen接口
-│   │   ├── deepseek.py    # DeepSeek接口
-│   │   └── claude.py      # Anthropic Claude接口（可选）
-│   ├── utils/             # 工具类
-│   │   ├── __init__.py
-│   │   ├── logger.py      # 日志工具
-│   │   └── validator.py   # 验证工具
-│   └── main.py            # 入口文件
-├── tests/                 # 测试文件
-├── requirements.txt       # 依赖包
-└── README.md
+### 🎯 多阶段翻译流程
+- **任务规划 (Planner)**: 自动检测源语言，拆分翻译任务
+- **主翻译 (Translator-A)**: 使用Gemini进行初步翻译
+- **对照翻译 (Translator-B)**: 使用Qwen进行对比翻译
+- **质量检查 (Checker)**: 使用GPT-4进行一致性检查和MQM评分
+- **风格化 (Stylist)**: 根据目标风格优化翻译
+- **最终整合 (Aggregator)**: 综合所有结果生成最终翻译
+
+### 📊 专业评估系统
+- **BERTScore**: 语义相似度评估（开发模式）
+- **COMET**: WMT官方质量评估模型（论文模式，可选）
+- **MQM**: 多维度质量指标（充分性、流畅性、术语准确性）
+- **BLEU**: 传统n-gram匹配指标
+- **综合评分**: 加权组合多个评估指标
+
+### 🌍 多语言支持
+- 支持多种语言翻译成中文（英语、日语、法语等）
+- 自动语言检测
+- 可配置翻译风格（通用、商务、学术、技术等9种风格）
+
+## 📋 系统要求
+
+- Python 3.8+
+- 8GB+ 内存（推荐）
+- 网络连接（用于API调用）
+
+## 🚀 快速开始
+
+### 1. 克隆项目
+
+```bash
+git clone <repository-url>
+cd Translator_online
 ```
 
-## 核心设计理念
-
-1. **多阶段工作流**：将翻译任务分解为多个专业阶段，每个阶段由专门的Agent负责
-2. **模型分工**：不同模型负责不同任务，发挥各自优势（Gemini擅长多语言翻译，Qwen擅长中文表达）
-3. **质量保证**：通过双重翻译、一致性检查、质量评分确保翻译质量
-4. **可解释性**：记录每个阶段的修改和原因，便于研究和论文撰写
-5. **可扩展性**：通过抽象基类设计，易于添加新的大模型接口和Agent
-6. **配置驱动**：通过配置文件管理模型和策略参数
-
-## 未来优化方向
-
-- 多模型投票机制
-- 置信度评估和质量检测
-- 领域自适应翻译
-- 上下文感知翻译
-- 翻译后处理和优化
-- 成本优化策略
-
-## 快速开始
-
-### 1. 安装依赖
+### 2. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 配置API密钥
-
-创建 `.env` 文件（参考 `.env.example`）：
+如果需要使用专业评估功能（BERTScore），还需要安装：
 
 ```bash
-OPENAI_API_KEY=your_openai_api_key
-GEMINI_API_KEY=your_gemini_api_key
+pip install bert-score
 ```
 
-### 3. 运行示例
+### 3. 配置API密钥
+
+#### 方法1: 使用环境变量文件（推荐）
+
+1. 复制示例配置文件：
+```bash
+cp .env.example .env
+```
+
+2. 编辑 `.env` 文件，填入你的API密钥：
+
+```env
+# OpenRouter API密钥（用于访问GPT-4、Gemini、Claude）
+# 注册地址: https://openrouter.ai/
+OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
+
+# Qwen API密钥（可选，用于Qwen模型）
+# 注册地址: https://dashscope.aliyun.com/
+QWEN_API_KEY=your-qwen-api-key-here
+
+# DeepSeek API密钥（可选）
+DEEPSEEK_API_KEY=your-deepseek-api-key-here
+```
+
+**⚠️ 重要**: `.env` 文件已加入 `.gitignore`，不会被提交到GitHub，请放心填写你的真实密钥。
+
+#### 方法2: 设置系统环境变量
+
+在Windows PowerShell中：
+```powershell
+$env:OPENROUTER_API_KEY="sk-or-v1-your-api-key-here"
+```
+
+在Linux/Mac中：
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-your-api-key-here"
+```
+
+### 4. 配置模型
+
+编辑 `config/models.yaml`，确保所需模型已启用：
+
+```yaml
+models:
+  openai:
+    enabled: true
+    api_key_env: "OPENROUTER_API_KEY"
+    # ...
+  gemini:
+    enabled: true
+    api_key_env: "OPENROUTER_API_KEY"
+    # ...
+```
+
+### 5. 运行测试
 
 ```bash
-# 运行主程序
-python src/main.py
-
-# 或运行详细示例
-python examples/basic_usage.py
+python quick_test.py
 ```
 
-## 使用示例
+如果看到 "✓ 所有API密钥配置正确"，说明配置成功！
 
-### 基础用法
+## 📖 使用方法
+
+### 基础翻译
 
 ```python
 import asyncio
-from src.agents.translator import TranslatorAgent
-from src.models.openai import OpenAIModel
-
-async def main():
-    # 创建模型
-    model = OpenAIModel(
-        model_name="gpt-3.5-turbo",
-        api_key="your_api_key"
-    )
-    
-    # 创建Agent
-    agent = TranslatorAgent(models=[model])
-    
-    # 翻译
-    result = await agent.translate(
-        text="Hello, world!",
-        source_lang="en",
-        target_lang="zh"
-    )
-    
-    print(result.translated_text)
-
-asyncio.run(main())
-```
-
-### 多阶段工作流翻译（推荐）
-
-```python
 from src.agents.pipeline import TranslationPipeline
 from src.models.openai import OpenAIModel
 from src.models.gemini import GeminiModel
 from src.models.qwen import QwenModel
+import os
+from dotenv import load_dotenv
 
-# 创建各个阶段的模型
-planner_model = OpenAIModel(model_name="gpt-4", api_key="...")
-translator_a_model = GeminiModel(model_name="gemini-pro", api_key="...")
-translator_b_model = QwenModel(model_name="qwen-turbo", api_key="...")
-checker_model = OpenAIModel(model_name="gpt-4", api_key="...")
-stylist_model = QwenModel(model_name="qwen-turbo", api_key="...")
-aggregator_model = OpenAIModel(model_name="gpt-4", api_key="...")
+load_dotenv()
 
-# 创建工作流
-pipeline = TranslationPipeline(
-    planner_model=planner_model,
-    translator_a_model=translator_a_model,
-    translator_b_model=translator_b_model,
-    checker_model=checker_model,
-    stylist_model=stylist_model,
-    aggregator_model=aggregator_model,
-    glossary={"AI": "人工智能"},  # 术语表
-    style="academic"  # 风格：general, academic, official, colloquial
-)
+async def main():
+    # 创建模型实例
+    planner = OpenAIModel(
+        "gpt-4",
+        os.getenv("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+        use_openrouter=True
+    )
+    
+    translator_a = GeminiModel(
+        "google/gemini-2.5-flash",
+        os.getenv("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+        use_openrouter=True
+    )
+    
+    translator_b = QwenModel(
+        "qwen-turbo",
+        os.getenv("QWEN_API_KEY")
+    )
+    
+    checker = OpenAIModel(
+        "gpt-4",
+        os.getenv("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+        use_openrouter=True
+    )
+    
+    stylist = QwenModel(
+        "qwen-turbo",
+        os.getenv("QWEN_API_KEY")
+    )
+    
+    aggregator = OpenAIModel(
+        "gpt-4",
+        os.getenv("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+        use_openrouter=True
+    )
+    
+    # 创建翻译管道
+    pipeline = TranslationPipeline(
+        planner_model=planner,
+        translator_a_model=translator_a,
+        translator_b_model=translator_b,
+        checker_model=checker,
+        stylist_model=stylist,
+        aggregator_model=aggregator,
+        style="general"  # 可选: general, business, academic, technical等
+    )
+    
+    # 执行翻译
+    result = await pipeline.translate(
+        text="Machine learning is a subset of artificial intelligence.",
+        source_lang="en",
+        target_lang="zh"
+    )
+    
+    print(f"翻译结果: {result.translated_text}")
+    print(f"质量评分: {result.explainability_report.final_quality_score.overall}")
 
-# 执行翻译
-result = await pipeline.translate(
-    text="Machine learning is a subset of AI.",
-    source_lang="en",
-    target_lang="zh"
-)
-
-print(result.translated_text)
-print(result.explainability_report)  # 可解释性报告
+asyncio.run(main())
 ```
 
-### 简单模式（向后兼容）
+### 快速开始脚本
+
+```bash
+python quick_start.py
+```
+
+### 评估翻译质量
+
+#### 开发模式（快速，使用BERTScore）
+
+```bash
+python evaluate_v2_10_samples.py
+```
+
+#### 多语言评估
+
+```bash
+python evaluate_multilang.py
+```
+
+## 📁 项目结构
+
+```
+Translator_online/
+├── config/                 # 配置文件
+│   ├── models.yaml        # 模型配置
+│   ├── config.yaml        # 主配置
+│   ├── styles.yaml         # 翻译风格配置
+│   └── evaluation.yaml     # 评估模式配置
+├── src/
+│   ├── agents/            # Agent核心模块
+│   │   ├── pipeline.py    # 工作流编排器
+│   │   ├── planner.py     # 任务规划
+│   │   ├── translator_a.py # 主翻译
+│   │   ├── translator_b.py # 对照翻译
+│   │   ├── checker.py     # 质量检查
+│   │   ├── stylist.py     # 风格化
+│   │   └── aggregator.py # 最终整合
+│   ├── models/            # 大模型接口
+│   │   ├── openai.py      # OpenAI/GPT-4
+│   │   ├── gemini.py      # Google Gemini
+│   │   ├── qwen.py        # Qwen
+│   │   └── claude.py      # Claude
+│   └── evaluation/        # 评估模块
+│       ├── combined_scorer.py # 综合评估器
+│       ├── bertscore_scorer.py # BERTScore
+│       └── comet_scorer.py    # COMET（可选）
+├── test_data/             # 测试数据
+├── examples/              # 使用示例
+├── docs/                  # 文档
+├── .env.example           # 环境变量示例
+├── requirements.txt       # Python依赖
+└── README_中文.md        # 本文档
+```
+
+## 🔧 配置说明
+
+### 模型配置 (`config/models.yaml`)
+
+系统支持以下模型：
+
+- **OpenAI (GPT-4)**: 用于Planner、Checker、Aggregator
+- **Gemini**: 用于主翻译（Translator-A）
+- **Qwen**: 用于对照翻译（Translator-B）和风格化（Stylist）
+- **Claude**: 可选，用于Checker
+- **DeepSeek**: 可选
+
+### 翻译风格 (`config/styles.yaml`)
+
+系统支持9种翻译风格：
+
+- `general`: 通用风格（默认）
+- `native`: 地道风格
+- `business`: 商务风格
+- `academic`: 学术风格
+- `technical`: 技术文档风格
+- `literary`: 文学风格
+- `news`: 新闻风格
+- `colloquial`: 口语风格
+- `legal`: 法律风格
+
+### 评估模式 (`config/evaluation.yaml`)
+
+- **开发模式**: BERTScore + MQM + BLEU（快速，20-30秒/10句）
+- **论文模式**: COMET + BERTScore + MQM + BLEU（完整，2-3分钟/10句）
+- **完整模式**: 所有模型（需要GPU）
+
+## 📊 评估报告
+
+系统会生成详细的评估报告：
+
+- **JSON格式**: 包含所有详细数据
+- **Markdown格式**: 便于阅读的格式
+
+报告包含：
+- 总体统计（成功率、平均评分等）
+- 按语言/领域统计
+- 每个样本的详细评分
+- 最佳/最差案例
+
+## 🔒 安全说明
+
+### API密钥保护
+
+1. **环境变量**: 所有API密钥都通过环境变量读取，不会硬编码在代码中
+2. **.gitignore**: `.env` 文件已加入 `.gitignore`，不会被提交到GitHub
+3. **示例文件**: `.env.example` 只包含占位符，不包含真实密钥
+
+### 检查密钥是否泄露
+
+运行以下命令检查是否有硬编码的密钥：
+
+```bash
+# 检查是否包含真实的API密钥
+grep -r "sk-or-v1-" . --exclude-dir=.git
+```
+
+如果发现任何输出，请立即更换密钥！
+
+## 🐛 常见问题
+
+### Q: 提示"未找到API密钥"
+
+**A**: 请确保：
+1. `.env` 文件存在于项目根目录
+2. `.env` 文件中包含正确的环境变量名
+3. 环境变量值没有引号（如 `OPENROUTER_API_KEY=sk-or-v1-xxx`，不是 `OPENROUTER_API_KEY="sk-or-v1-xxx"`）
+
+### Q: OpenRouter API调用失败
+
+**A**: 可能原因：
+1. API密钥无效或已过期
+2. 账户余额不足
+3. 网络连接问题
+
+检查方法：
+```bash
+python test_openrouter.py
+```
+
+### Q: BERTScore评估很慢
+
+**A**: 首次运行会下载BERT模型（约400MB），需要几分钟。后续运行会使用缓存的模型，速度会快很多。
+
+### Q: 如何切换评估模式？
+
+**A**: 编辑 `evaluate_v2_10_samples.py`，修改：
 
 ```python
-from src.agents.translator import TranslatorAgent
-from src.models.openai import OpenAIModel
-from src.models.gemini import GeminiModel
-
-# 创建多个模型
-models = [
-    OpenAIModel(model_name="gpt-3.5-turbo", api_key="..."),
-    GeminiModel(model_name="gemini-pro", api_key="...")
-]
-
-# 使用投票策略
-agent = TranslatorAgent(
-    models=models,
-    strategy_type="voting",
-    strategy_config={"min_models": 2}
+scorer = CombinedQualityScorer(
+    use_comet=True,      # 启用COMET（需要先安装: pip install unbabel-comet）
+    use_bleurt=False,
+    use_bertscore=True
 )
-
-result = await agent.translate("Hello", source_lang="en", target_lang="zh")
 ```
 
-## 架构说明
+## 📈 性能指标
 
-### 核心组件
+### 翻译速度
+- 单句翻译: 约15-20秒
+- 10句批量: 约3-5分钟
 
-1. **模型层 (src/models/)**
-   - `BaseModel`: 模型抽象基类
-   - `OpenAIModel`: OpenAI接口实现
-   - `GeminiModel`: Google Gemini接口实现
-   - 易于扩展新模型（如Claude、文心一言等）
+### 评估速度（开发模式）
+- 首次运行: 约7分钟（下载BERT模型）
+- 后续运行: 约3-5分钟/10句
 
-2. **策略层 (src/agents/strategies/)**
-   - `BaseStrategy`: 策略基类
-   - `VotingStrategy`: 投票策略（选择出现次数最多的翻译）
-   - `WeightedStrategy`: 加权策略（根据模型权重选择）
-   - 可扩展新策略（如置信度评估、相似度匹配等）
+### 评估速度（论文模式）
+- 首次运行: 约10分钟（下载COMET模型）
+- 后续运行: 约20-30分钟/10句
 
-3. **Agent层 (src/agents/)**
-   - `TranslatorAgent`: 主翻译Agent，协调模型和策略
+## 🤝 贡献
 
-### 扩展指南
+欢迎提交Issue和Pull Request！
 
-#### 添加新模型
+## 📄 许可证
 
-1. 继承 `BaseModel` 类
-2. 实现 `translate()` 和 `validate_config()` 方法
-3. 在 `src/models/__init__.py` 中导出
+[根据实际情况填写]
 
-#### 添加新策略
+## 🙏 致谢
 
-1. 继承 `BaseStrategy` 类
-2. 实现 `combine_translations()` 方法
-3. 在 `src/agents/strategies/__init__.py` 中导出
-4. 在 `TranslatorAgent._create_strategy()` 中添加策略类型
+- OpenRouter: 提供统一的API访问多个大模型
+- BERTScore: 语义相似度评估
+- COMET: WMT官方质量评估模型
 
-## 未来研究方向
+## 📞 联系方式
 
-框架设计支持以下优化方向：
+如有问题，请提交Issue或联系项目维护者。
 
-1. **置信度评估**
-   - 基于模型输出的logprobs计算置信度
-   - 多模型结果一致性分析
+---
 
-2. **相似度匹配**
-   - 使用embedding计算翻译结果相似度
-   - 改进投票策略的匹配机制
-
-3. **领域自适应**
-   - 根据文本领域选择最适合的模型
-   - 领域特定的提示词优化
-
-4. **上下文感知**
-   - 利用对话历史提升翻译质量
-   - 术语一致性保证
-
-5. **成本优化**
-   - 根据文本复杂度选择模型
-   - 缓存机制减少API调用
-
-6. **后处理优化**
-   - 翻译结果质量检测
-   - 自动修正和润色
-
-## 开发计划
-
-- [ ] 添加Claude模型支持
-- [ ] 实现置信度评估策略
-- [ ] 添加翻译质量评估指标
-- [ ] 实现缓存机制
-- [ ] 添加批量翻译API
-- [ ] 性能优化和并发控制
-- [ ] 单元测试和集成测试
-
-## 许可证
-
-MIT License
+**⚠️ 重要提醒**: 
+- 请妥善保管你的API密钥，不要分享给他人
+- 定期检查API使用量，避免意外费用
+- 如果发现密钥泄露，请立即更换
 
