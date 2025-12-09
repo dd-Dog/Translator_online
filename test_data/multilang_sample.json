@@ -1,0 +1,83 @@
+[
+  {
+    "id": 1,
+    "source_lang": "ja",
+    "target_lang": "zh",
+    "source": "機械学習は人工知能の一部です。",
+    "reference": "机器学习是人工智能的一部分。",
+    "domain": "technology"
+  },
+  {
+    "id": 2,
+    "source_lang": "ja",
+    "target_lang": "zh",
+    "source": "今日は良い天気です。",
+    "reference": "今天天气很好。",
+    "domain": "general"
+  },
+  {
+    "id": 3,
+    "source_lang": "ja",
+    "target_lang": "zh",
+    "source": "彼女は本を読むのが好きです。",
+    "reference": "她喜欢读书。",
+    "domain": "general"
+  },
+  {
+    "id": 4,
+    "source_lang": "ja",
+    "target_lang": "zh",
+    "source": "深層学習はコンピュータビジョンの分野を革命的に変えました。",
+    "reference": "深度学习彻底改变了计算机视觉领域。",
+    "domain": "technology"
+  },
+  {
+    "id": 5,
+    "source_lang": "ja",
+    "target_lang": "zh",
+    "source": "データは機械学習アルゴリズムを動かす燃料です。",
+    "reference": "数据是驱动机器学习算法的燃料。",
+    "domain": "technology"
+  },
+  {
+    "id": 6,
+    "source_lang": "fr",
+    "target_lang": "zh",
+    "source": "L'apprentissage automatique est un sous-ensemble de l'intelligence artificielle.",
+    "reference": "机器学习是人工智能的一个子集。",
+    "domain": "technology"
+  },
+  {
+    "id": 7,
+    "source_lang": "fr",
+    "target_lang": "zh",
+    "source": "Il fait beau aujourd'hui.",
+    "reference": "今天天气很好。",
+    "domain": "general"
+  },
+  {
+    "id": 8,
+    "source_lang": "fr",
+    "target_lang": "zh",
+    "source": "Elle aime lire des livres pendant son temps libre.",
+    "reference": "她喜欢在空闲时间读书。",
+    "domain": "general"
+  },
+  {
+    "id": 9,
+    "source_lang": "fr",
+    "target_lang": "zh",
+    "source": "L'apprentissage profond a révolutionné le domaine de la vision par ordinateur.",
+    "reference": "深度学习彻底改变了计算机视觉领域。",
+    "domain": "technology"
+  },
+  {
+    "id": 10,
+    "source_lang": "fr",
+    "target_lang": "zh",
+    "source": "Les données sont le carburant qui alimente les algorithmes d'apprentissage automatique.",
+    "reference": "数据是驱动机器学习算法的燃料。",
+    "domain": "technology"
+  }
+]
+

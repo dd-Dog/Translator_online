@@ -1,0 +1,176 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-09T09:43:05.214119",
+    "languages": [
+      "ja",
+      "fr"
+    ],
+    "total_samples": 10,
+    "successful": 10,
+    "total_time_seconds": 611.6365261077881
+  },
+  "by_language": {
+    "ja": {
+      "name": "日语",
+      "count": 5,
+      "avg_final_score": 0.8759754480446955,
+      "avg_bleu": 0.6429821813531618,
+      "avg_bertscore": 0.9529580235481262
+    },
+    "fr": {
+      "name": "法语",
+      "count": 5,
+      "avg_final_score": 0.9090119908094574,
+      "avg_bleu": 0.8982032908202056,
+      "avg_bertscore": 0.9847426652908325
+    }
+  },
+  "summary": {
+    "avg_bleu": 0.7705927360866837,
+    "avg_bertscore": 0.9688503444194794,
+    "avg_mqm": 0.8465,
+    "avg_final_score": 0.8924937194270764
+  },
+  "results": [
+    {
+      "id": 6,
+      "source_lang": "fr",
+      "domain": "technology",
+      "source": "L'apprentissage automatique est un sous-ensemble de l'intelligence artificielle.",
+      "reference": "机器学习是人工智能的一个子集。",
+      "translation": "机器学习是人工智能的一个子集。",
+      "scores": {
+        "bleu": 1.0,
+        "bertscore_f1": 1.0000001192092896,
+        "mqm_overall": 1.0,
+        "final_score": 1.0000000596046448
+      }
+    },
+    {
+      "id": 7,
+      "source_lang": "fr",
+      "domain": "general",
+      "source": "Il fait beau aujourd'hui.",
+      "reference": "今天天气很好。",
+      "translation": "今天天气很好。",
+      "scores": {
+        "bleu": 1.0,
+        "bertscore_f1": 1.0000001192092896,
+        "mqm_overall": 0.55,
+        "final_score": 0.8650000596046448
+      }
+    },
+    {
+      "id": 8,
+      "source_lang": "fr",
+      "domain": "general",
+      "source": "Elle aime lire des livres pendant son temps libre.",
+      "reference": "她喜欢在空闲时间读书。",
+      "translation": "她喜欢在空闲时间读书。",
+      "scores": {
+        "bleu": 1.0,
+        "bertscore_f1": 1.0000001192092896,
+        "mqm_overall": 0.55,
+        "final_score": 0.8650000596046448
+      }
+    },
+    {
+      "id": 9,
+      "source_lang": "fr",
+      "domain": "technology",
+      "source": "L'apprentissage profond a révolutionné le domaine de la vision par ordinateur.",
+      "reference": "深度学习彻底改变了计算机视觉领域。",
+      "translation": "深度学习彻底革新了计算机视觉领域。",
+      "scores": {
+        "bleu": 0.762465858623486,
+        "bertscore_f1": 0.9742173552513123,
+        "mqm_overall": 0.8500000000000001,
+        "final_score": 0.8946018493503534
+      }
+    },
+    {
+      "id": 10,
+      "source_lang": "fr",
+      "domain": "technology",
+      "source": "Les données sont le carburant qui alimente les algorithmes d'apprentissage automatique.",
+      "reference": "数据是驱动机器学习算法的燃料。",
+      "translation": "数据是驱动机器学习算法的燃料。\n\n---",
+      "scores": {
+        "bleu": 0.7285505954775419,
+        "bertscore_f1": 0.9494956135749817,
+        "mqm_overall": 1.0,
+        "final_score": 0.9204579258829992
+      }
+    },
+    {
+      "id": 1,
+      "source_lang": "ja",
+      "domain": "technology",
+      "source": "機械学習は人工知能の一部です。",
+      "reference": "机器学习是人工智能的一部分。",
+      "translation": "机器学习是人工智能的一个分支。",
+      "scores": {
+        "bleu": 0.7311104457090247,
+        "bertscore_f1": 0.937679648399353,
+        "mqm_overall": 1.0,
+        "final_score": 0.9150619133414815
+      }
+    },
+    {
+      "id": 2,
+      "source_lang": "ja",
+      "domain": "general",
+      "source": "今日は良い天気です。",
+      "reference": "今天天气很好。",
+      "translation": "今天天气很好。",
+      "scores": {
+        "bleu": 1.0,
+        "bertscore_f1": 1.0000001192092896,
+        "mqm_overall": 0.9750000000000001,
+        "final_score": 0.9925000596046448
+      }
+    },
+    {
+      "id": 3,
+      "source_lang": "ja",
+      "domain": "general",
+      "source": "彼女は本を読むのが好きです。",
+      "reference": "她喜欢读书。",
+      "translation": "她喜欢阅读书籍。",
+      "scores": {
+        "bleu": 5.87583260478785e-78,
+        "bertscore_f1": 0.9277598857879639,
+        "mqm_overall": 1.0,
+        "final_score": 0.763879942893982
+      }
+    },
+    {
+      "id": 4,
+      "source_lang": "ja",
+      "domain": "technology",
+      "source": "深層学習はコンピュータビジョンの分野を革命的に変えました。",
+      "reference": "深度学习彻底改变了计算机视觉领域。",
+      "translation": "深度学习彻底改变了计算机视觉领域。\n\n---",
+      "scores": {
+        "bleu": 0.7552498655792421,
+        "bertscore_f1": 0.949854850769043,
+        "mqm_overall": 0.54,
+        "final_score": 0.78797739850037
+      }
+    },
+    {
+      "id": 5,
+      "source_lang": "ja",
+      "domain": "technology",
+      "source": "データは機械学習アルゴリズムを動かす燃料です。",
+      "reference": "数据是驱动机器学习算法的燃料。",
+      "translation": "数据是驱动机器学习算法的燃料。\n\n---",
+      "scores": {
+        "bleu": 0.7285505954775419,
+        "bertscore_f1": 0.9494956135749817,
+        "mqm_overall": 1.0,
+        "final_score": 0.9204579258829992
+      }
+    }
+  ]
+}
