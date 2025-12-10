@@ -1,6 +1,8 @@
-# 多模型协作翻译系统
+# 多模型协作翻译系统 V3.0
 
-一个基于大语言模型的多阶段、多模型协作翻译系统，支持多种语言翻译成中文，并提供专业的质量评估功能。
+一个基于大语言模型的多阶段、多模型协作翻译系统，支持多种语言翻译成中文。
+
+**V3.0 更新**: 翻译系统与评估系统已完全分离，评估功能已迁移到独立的共享评估库 [`translation_evaluator`](https://github.com/your-org/translation_evaluator)。
 
 ## ✨ 核心特性
 
@@ -12,12 +14,21 @@
 - **风格化 (Stylist)**: 根据目标风格优化翻译
 - **最终整合 (Aggregator)**: 综合所有结果生成最终翻译
 
-### 📊 专业评估系统
-- **BERTScore**: 语义相似度评估（开发模式）
-- **COMET**: WMT官方质量评估模型（论文模式，可选）
-- **MQM**: 多维度质量指标（充分性、流畅性、术语准确性）
+### 📊 评估系统（已分离）
+
+**V3.0 重要变更**: 评估功能已迁移到独立的共享评估库。
+
+如需使用专业评估功能，请使用 [`translation_evaluator`](https://github.com/your-org/translation_evaluator) 库：
+
 - **BLEU**: 传统n-gram匹配指标
+- **COMET**: WMT官方质量评估模型（论文模式）
+- **BLEURT**: Google BERT-based评估模型
+- **BERTScore**: 语义相似度评估
+- **MQM**: 多维度质量指标（系统内置）
+- **ChrF**: 字符级F-score指标
 - **综合评分**: 加权组合多个评估指标
+
+详细使用说明请参考: `docs/评估器环境配置指南.md`
 
 ### 🌍 多语言支持
 - 支持多种语言翻译成中文（英语、日语、法语等）
@@ -45,11 +56,11 @@ cd Translator_online
 pip install -r requirements.txt
 ```
 
-如果需要使用专业评估功能（BERTScore），还需要安装：
+**注意**: V3.0 版本中，评估功能已分离到独立的评估库。如需使用评估功能，请：
 
-```bash
-pip install bert-score
-```
+1. 安装共享评估库（如果尚未安装）
+2. 参考 `docs/评估器环境配置指南.md` 配置评估环境
+3. 使用 `test_evaluator_env.py` 测试评估环境
 
 ### 3. 配置API密钥
 
@@ -198,19 +209,22 @@ asyncio.run(main())
 python quick_start.py
 ```
 
-### 评估翻译质量
+### 测试评估环境
 
-#### 开发模式（快速，使用BERTScore）
-
-```bash
-python evaluate_v2_10_samples.py
-```
-
-#### 多语言评估
+V3.0 版本中，评估功能已分离。测试评估环境：
 
 ```bash
-python evaluate_multilang.py
+# Windows
+run_test_evaluator_env.bat
+
+# Linux/Mac
+./run_test_evaluator_env.sh
+
+# 或直接运行
+python test_evaluator_env.py
 ```
+
+详细配置说明请参考: `docs/评估器环境配置指南.md`
 
 ## 📁 项目结构
 
@@ -235,16 +249,19 @@ Translator_online/
 │   │   ├── gemini.py      # Google Gemini
 │   │   ├── qwen.py        # Qwen
 │   │   └── claude.py      # Claude
-│   └── evaluation/        # 评估模块
-│       ├── combined_scorer.py # 综合评估器
-│       ├── bertscore_scorer.py # BERTScore
-│       └── comet_scorer.py    # COMET（可选）
+│   └── utils/            # 工具模块
+│       └── evaluator_env.py # 评估器环境配置工具
 ├── test_data/             # 测试数据
 ├── examples/              # 使用示例
 ├── docs/                  # 文档
+│   ├── 评估器环境配置指南.md  # 评估环境配置
+│   └── 评估器环境使用说明.md  # 评估环境使用
+├── test_evaluator_env.py  # 评估环境测试脚本
+├── run_test_evaluator_env.bat  # Windows启动脚本
+├── run_test_evaluator_env.sh   # Linux/Mac启动脚本
 ├── .env.example           # 环境变量示例
 ├── requirements.txt       # Python依赖
-└── README_中文.md        # 本文档
+└── README.md              # 本文档
 ```
 
 ## 🔧 配置说明
@@ -273,24 +290,44 @@ Translator_online/
 - `colloquial`: 口语风格
 - `legal`: 法律风格
 
-### 评估模式 (`config/evaluation.yaml`)
+### 评估配置 (`config/evaluation.yaml`)
 
-- **开发模式**: BERTScore + MQM + BLEU（快速，20-30秒/10句）
-- **论文模式**: COMET + BERTScore + MQM + BLEU（完整，2-3分钟/10句）
-- **完整模式**: 所有模型（需要GPU）
+V3.0 版本中，评估功能已分离到独立的评估库。此配置文件用于配置评估器环境：
 
-## 📊 评估报告
+- **评估器环境**: 指定 conda 环境名称或 Python 路径
+- **评估模式**: 开发模式、论文模式、完整模式
 
-系统会生成详细的评估报告：
+详细配置请参考: `docs/评估器环境配置指南.md`
 
-- **JSON格式**: 包含所有详细数据
-- **Markdown格式**: 便于阅读的格式
+## 📊 评估功能
 
-报告包含：
-- 总体统计（成功率、平均评分等）
-- 按语言/领域统计
-- 每个样本的详细评分
-- 最佳/最差案例
+V3.0 版本中，评估功能已迁移到独立的共享评估库 [`translation_evaluator`](https://github.com/your-org/translation_evaluator)。
+
+### 使用评估库
+
+1. **配置评估环境**: 参考 `docs/评估器环境配置指南.md`
+2. **测试环境**: 运行 `test_evaluator_env.py`
+3. **在代码中使用**:
+
+```python
+from translation_evaluator import UnifiedEvaluator
+
+evaluator = UnifiedEvaluator(
+    use_bleu=True,
+    use_comet=True,
+    use_bleurt=True,
+    use_bertscore=True,
+    use_mqm=True,
+    use_chrf=True
+)
+evaluator.initialize()
+
+score = evaluator.score(
+    source="Hello world",
+    translation="你好世界",
+    reference="你好世界"
+)
+```
 
 ## 🔒 安全说明
 
@@ -332,21 +369,19 @@ grep -r "sk-or-v1-" . --exclude-dir=.git
 python test_openrouter.py
 ```
 
-### Q: BERTScore评估很慢
+### Q: 如何使用评估功能？
 
-**A**: 首次运行会下载BERT模型（约400MB），需要几分钟。后续运行会使用缓存的模型，速度会快很多。
+**A**: V3.0 版本中，评估功能已分离。请：
+1. 参考 `docs/评估器环境配置指南.md` 配置评估环境
+2. 运行 `test_evaluator_env.py` 测试环境
+3. 使用 `translation_evaluator` 库进行评估
 
-### Q: 如何切换评估模式？
+### Q: 评估环境配置失败？
 
-**A**: 编辑 `evaluate_v2_10_samples.py`，修改：
-
-```python
-scorer = CombinedQualityScorer(
-    use_comet=True,      # 启用COMET（需要先安装: pip install unbabel-comet）
-    use_bleurt=False,
-    use_bertscore=True
-)
-```
+**A**: 请检查：
+1. conda 环境名称是否正确（`config/evaluation.yaml`）
+2. 评估库是否已安装到指定环境
+3. 参考 `docs/评估器环境使用说明.md` 排查问题
 
 ## 📈 性能指标
 
@@ -354,13 +389,10 @@ scorer = CombinedQualityScorer(
 - 单句翻译: 约15-20秒
 - 10句批量: 约3-5分钟
 
-### 评估速度（开发模式）
-- 首次运行: 约7分钟（下载BERT模型）
-- 后续运行: 约3-5分钟/10句
-
-### 评估速度（论文模式）
-- 首次运行: 约10分钟（下载COMET模型）
-- 后续运行: 约20-30分钟/10句
+### 评估速度（使用独立评估库）
+- **开发模式**: BERTScore + MQM + BLEU + ChrF（约20-30秒/10句）
+- **论文模式**: COMET + BERTScore + MQM + BLEU + ChrF（约2-3分钟/10句）
+- **完整模式**: 所有模型（需要GPU，约30秒/10句）
 
 ## 🤝 贡献
 
@@ -373,8 +405,27 @@ scorer = CombinedQualityScorer(
 ## 🙏 致谢
 
 - OpenRouter: 提供统一的API访问多个大模型
+- translation_evaluator: 共享评估库（V3.0新增）
 - BERTScore: 语义相似度评估
 - COMET: WMT官方质量评估模型
+- BLEURT: Google BERT-based评估模型
+
+## 📝 版本历史
+
+### V3.0 (当前版本)
+- ✅ 翻译系统与评估系统完全分离
+- ✅ 评估功能迁移到独立的共享评估库
+- ✅ 支持独立的 conda 环境配置
+- ✅ 改进的错误提示和文档
+
+### V2.0
+- ✅ 集成专业评估模型（COMET, BLEURT, BERTScore）
+- ✅ 多维度质量评估（BLEU, MQM, ChrF）
+- ✅ 可配置的翻译风格
+
+### V1.0
+- ✅ 基础多阶段翻译流程
+- ✅ 多模型协作机制
 
 ## 📞 联系方式
 

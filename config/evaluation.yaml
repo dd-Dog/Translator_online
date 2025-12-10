@@ -1,5 +1,17 @@
 # 评估模型配置
 
+# translation_evaluator 环境配置
+# 如果 translation_evaluator 安装在单独的 conda 环境中，请配置以下选项
+evaluator_env:
+  # 方式1: 指定 conda 环境名称（推荐）
+  conda_env_name: "translator_eval"  # 取消注释并填入你的环境名称
+  
+  # 方式2: 直接指定 Python 可执行文件路径（如果方式1不工作）
+  # python_path: "C:/Users/YourName/miniconda3/envs/evaluator_env/python.exe"
+  
+  # 方式3: 使用当前环境的 Python（默认，如果 translation_evaluator 已安装到当前环境）
+  # use_current_env: true
+
 # 评估模式
 modes:
   # 开发模式（快速，轻量）

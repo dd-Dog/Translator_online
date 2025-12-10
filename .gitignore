@@ -55,3 +55,12 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# BLEURT 模型文件（需要手动下载）
+BLEURT-*/
+bleurt_models/
+
+# 评估报告（保留最新，忽略旧的）
+reports/*.json
+reports/*.md
+!reports/.gitkeep
+

@@ -1,0 +1,30 @@
+# translation_evaluator 环境配置示例
+# 复制此配置到 config/evaluation.yaml 的 evaluator_env 部分
+
+# ============================================
+# 示例1: 使用 conda 环境名称（推荐）
+# ============================================
+evaluator_env:
+  conda_env_name: "evaluator_env"  # 替换为你的 conda 环境名称
+  use_current_env: false
+
+# ============================================
+# 示例2: 直接指定 Python 路径（Windows）
+# ============================================
+# evaluator_env:
+#   python_path: "C:/Users/YourName/miniconda3/envs/evaluator_env/python.exe"
+#   use_current_env: false
+
+# ============================================
+# 示例3: 直接指定 Python 路径（Linux/Mac）
+# ============================================
+# evaluator_env:
+#   python_path: "/home/username/miniconda3/envs/evaluator_env/bin/python"
+#   use_current_env: false
+
+# ============================================
+# 示例4: 使用当前环境（默认）
+# ============================================
+# evaluator_env:
+#   use_current_env: true
+
