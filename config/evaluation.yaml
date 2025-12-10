@@ -1,5 +1,21 @@
 # 评估模型配置
 
+# 评估API服务配置（V3.0新增）
+# 如果评估功能运行在独立的API服务中，配置此部分
+api:
+  # 是否启用API模式（如果为true，将使用HTTP API调用评估服务）
+  enabled: false
+  
+  # 评估API服务器地址
+  base_url: "http://localhost:5001"
+  
+  # 请求超时时间（秒）
+  timeout: 300
+  
+  # API密钥（可选，用于认证）
+  # 可以使用环境变量: $EVAL_API_KEY
+  api_key: null
+
 # translation_evaluator 环境配置
 # 如果 translation_evaluator 安装在单独的 conda 环境中，请配置以下选项
 evaluator_env:

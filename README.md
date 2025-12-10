@@ -209,6 +209,17 @@ asyncio.run(main())
 python quick_start.py
 ```
 
+### 翻译与评估集成示例
+
+```bash
+# 确保评估API服务已启动（在另一个终端）
+# conda activate translator_eval
+# python eval_server.py
+
+# 运行集成示例
+python examples/translation_with_eval_api.py
+```
+
 ### 测试评估环境
 
 V3.0 版本中，评估功能已分离。测试评估环境：
@@ -250,7 +261,9 @@ Translator_online/
 │   │   ├── qwen.py        # Qwen
 │   │   └── claude.py      # Claude
 │   └── utils/            # 工具模块
-│       └── evaluator_env.py # 评估器环境配置工具
+│       ├── evaluator_env.py # 评估器环境配置工具
+│       ├── eval_api_client.py # 评估API客户端
+│       └── evaluation_service.py # 评估服务集成（支持API和本地模式）
 ├── test_data/             # 测试数据
 ├── examples/              # 使用示例
 ├── docs/                  # 文档
@@ -259,6 +272,7 @@ Translator_online/
 ├── test_evaluator_env.py  # 评估环境测试脚本
 ├── run_test_evaluator_env.bat  # Windows启动脚本
 ├── run_test_evaluator_env.sh   # Linux/Mac启动脚本
+├── API服务使用指南.md     # 评估API服务使用文档
 ├── .env.example           # 环境变量示例
 ├── requirements.txt       # Python依赖
 └── README.md              # 本文档
@@ -371,10 +385,25 @@ python test_openrouter.py
 
 ### Q: 如何使用评估功能？
 
-**A**: V3.0 版本中，评估功能已分离。请：
+**A**: V3.0 版本支持两种模式：
+
+**API模式（推荐）**:
+1. 启动评估API服务: `python eval_server.py`（在评估环境中）
+2. 配置 `config/evaluation.yaml` 启用API模式
+3. 使用 `EvaluationService` 调用评估API
+
+**本地模式**:
 1. 参考 `docs/评估器环境配置指南.md` 配置评估环境
 2. 运行 `test_evaluator_env.py` 测试环境
-3. 使用 `translation_evaluator` 库进行评估
+3. 使用 `EvaluationService(use_api=False)` 创建本地评估服务
+
+### Q: 评估API服务连接失败？
+
+**A**: 请检查：
+1. 评估API服务是否已启动: `python eval_server.py`
+2. 服务地址是否正确（`config/evaluation.yaml` 中的 `api.base_url`）
+3. 防火墙是否阻止了连接
+4. 参考 `API服务使用指南.md` 排查问题
 
 ### Q: 评估环境配置失败？
 
@@ -414,9 +443,11 @@ python test_openrouter.py
 
 ### V3.0 (当前版本)
 - ✅ 翻译系统与评估系统完全分离
-- ✅ 评估功能迁移到独立的共享评估库
+- ✅ 支持API服务模式：通过HTTP API调用评估服务
+- ✅ 支持本地评估模式：使用共享评估库
 - ✅ 支持独立的 conda 环境配置
 - ✅ 改进的错误提示和文档
+- ✅ 统一的评估服务接口（`EvaluationService`）
 
 ### V2.0
 - ✅ 集成专业评估模型（COMET, BLEURT, BERTScore）

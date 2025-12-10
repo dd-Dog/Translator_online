@@ -6,7 +6,7 @@ anthropic>=0.18.0
 # 工具库
 pyyaml>=6.0
 python-dotenv>=1.0.0
-requests>=2.31.0
+requests>=2.31.0  # 用于评估API客户端
 
 # 日志和工具
 loguru>=0.7.0
