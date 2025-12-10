@@ -224,6 +224,13 @@ python examples/translation_with_eval_api.py
 
 V3.0 版本中，评估功能已分离。测试评估环境：
 
+**快速测试（推荐）**:
+```bash
+# 使用固定文本快速测试（不进行翻译）
+python test_evaluation_quick.py
+```
+
+**完整测试**:
 ```bash
 # Windows
 run_test_evaluator_env.bat
