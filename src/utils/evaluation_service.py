@@ -9,7 +9,12 @@ import os
 
 # 尝试导入评估API客户端
 try:
-    from .eval_api_client import EvaluationAPIClient, EvaluationScore, create_eval_client_from_config
+    # 先尝试相对导入
+    try:
+        from .eval_api_client import EvaluationAPIClient, EvaluationScore, create_eval_client_from_config
+    except ImportError:
+        # 如果相对导入失败，尝试绝对导入
+        from src.utils.eval_api_client import EvaluationAPIClient, EvaluationScore, create_eval_client_from_config
     HAS_API_CLIENT = True
 except ImportError:
     HAS_API_CLIENT = False
@@ -91,7 +96,20 @@ class EvaluationService:
                 raise ImportError("本地评估器不可用，请安装 translation_evaluator 库")
             
             # 使用本地评估器
-            from src.utils.evaluator_env import setup_evaluator_environment
+            try:
+                from src.utils.evaluator_env import setup_evaluator_environment
+            except ImportError:
+                # 如果导入失败，尝试直接导入模块
+                import importlib.util
+                evaluator_env_path = Path(__file__).parent / "evaluator_env.py"
+                if evaluator_env_path.exists():
+                    spec = importlib.util.spec_from_file_location("evaluator_env", evaluator_env_path)
+                    evaluator_env_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(evaluator_env_module)
+                    setup_evaluator_environment = evaluator_env_module.setup_evaluator_environment
+                else:
+                    raise ImportError("无法找到 evaluator_env 模块")
+            
             evaluator_lib = Path(__file__).parent.parent.parent.parent / "translation_evaluator"
             if not evaluator_lib.exists():
                 evaluator_lib = Path(__file__).parent.parent.parent / "translation_evaluator"

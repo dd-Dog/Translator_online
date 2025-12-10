@@ -5,11 +5,29 @@
 
 import sys
 from pathlib import Path
+import importlib.util
 
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.utils.evaluation_service import create_evaluation_service
+# 直接导入模块，避免通过 __init__.py（可能依赖其他未安装的包）
+# 先导入 eval_api_client（如果可用）
+try:
+    eval_api_client_path = Path(__file__).parent / "src" / "utils" / "eval_api_client.py"
+    spec = importlib.util.spec_from_file_location("eval_api_client", eval_api_client_path)
+    eval_api_client_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(eval_api_client_module)
+    # 将模块添加到 sys.modules，供 evaluation_service 使用
+    sys.modules['src.utils.eval_api_client'] = eval_api_client_module
+except Exception as e:
+    print(f"[WARN] 无法导入 eval_api_client: {e}")
+
+# 导入 evaluation_service
+evaluation_service_path = Path(__file__).parent / "src" / "utils" / "evaluation_service.py"
+spec = importlib.util.spec_from_file_location("evaluation_service", evaluation_service_path)
+evaluation_service_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(evaluation_service_module)
+create_evaluation_service = evaluation_service_module.create_evaluation_service
 
 
 def test_evaluation_service():
