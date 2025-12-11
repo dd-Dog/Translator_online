@@ -558,7 +558,7 @@ async def main():
     
     # 配置参数
     TEST_LANG = "en"  # 测试语言（英语）
-    TEST_SAMPLES = 3  # 测试样本数（少量测试）
+    TEST_SAMPLES = 1  # 测试样本数（少量测试）
     DATASET_TYPE = "dev"
     
     lang_name = LANG_NAMES.get(TEST_LANG, TEST_LANG)
@@ -731,6 +731,41 @@ async def main():
                 if metric_scores:
                     avg_metric = sum(metric_scores) / len(metric_scores)
                     f.write(f"- **{metric.upper()}**: {avg_metric:.4f}\n")
+            f.write("\n")
+            
+            # 评分汇总表格
+            f.write(f"## 评分汇总\n\n")
+            f.write(f"| 源语言 | 目标语言 | BLEU | COMET | BERTScore F1 | BLEURT | chrF | 综合评分 | MQM_ADEQUACY | MQM_FLUENCY | MQM_OVERALL | MQM_TERMINOLOGY |\n")
+            f.write(f"| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
+            
+            # 计算当前语言对的平均分
+            eval_results = [r["evaluation"] for r in results if r.get("evaluation")]
+            if eval_results:
+                # 计算各指标平均值
+                avg_bleu = sum(e.get('bleu', 0) for e in eval_results) / len(eval_results)
+                avg_comet = sum(e.get('comet', 0) for e in eval_results if e.get('comet', 0) > 0)
+                comet_count = sum(1 for e in eval_results if e.get('comet', 0) > 0)
+                avg_comet = avg_comet / comet_count if comet_count > 0 else 0.0
+                avg_bertscore = sum(e.get('bertscore_f1', 0) for e in eval_results) / len(eval_results)
+                avg_bleurt = sum(e.get('bleurt', 0) for e in eval_results if e.get('bleurt', 0) > 0)
+                bleurt_count = sum(1 for e in eval_results if e.get('bleurt', 0) > 0)
+                avg_bleurt = avg_bleurt / bleurt_count if bleurt_count > 0 else 0.0
+                avg_chrf = sum(e.get('chrf', 0) for e in eval_results) / len(eval_results)
+                avg_final = sum(e.get('final_score', 0) for e in eval_results) / len(eval_results)
+                
+                # MQM平均值
+                mqm_results = [r.get("mqm_score") for r in results if r.get("mqm_score")]
+                avg_mqm_adequacy = sum(m.get('adequacy', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                avg_mqm_fluency = sum(m.get('fluency', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                avg_mqm_overall = sum(m.get('overall', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                avg_mqm_terminology = sum(m.get('terminology', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                
+                # 写入表格行
+                f.write(f"| {lang_name} | Chinese | {avg_bleu:.4f} | {avg_comet:.4f} | {avg_bertscore:.4f} | {avg_bleurt:.4f} | {avg_chrf:.4f} | {avg_final:.4f} | {avg_mqm_adequacy:.4f} | {avg_mqm_fluency:.4f} | {avg_mqm_overall:.4f} | {avg_mqm_terminology:.4f} |\n")
+                
+                # 如果有多个语言对，这里可以添加汇总行
+                # 目前只有一种语言，所以汇总行就是当前行的值
+                f.write(f"| **汇总** | **平均值** | **{avg_bleu:.4f}** | **{avg_comet:.4f}** | **{avg_bertscore:.4f}** | **{avg_bleurt:.4f}** | **{avg_chrf:.4f}** | **{avg_final:.4f}** | **{avg_mqm_adequacy:.4f}** | **{avg_mqm_fluency:.4f}** | **{avg_mqm_overall:.4f}** | **{avg_mqm_terminology:.4f}** |\n")
             f.write("\n")
         
         f.write(f"## 详细结果\n\n")
