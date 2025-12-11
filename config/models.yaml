@@ -1,9 +1,9 @@
 # 大模型配置
 models:
-  # OpenAI (用于Planner, Checker, Aggregator)
+  # OpenAI (用于Planner, Checker, Aggregator) - 已禁用，使用免费模型
   # 通过OpenRouter调用（国内可用）
   openai:
-    enabled: true
+    enabled: false
     provider: "openai"
     model: "gpt-4"  # OpenRouter会自动转换为 openai/gpt-4 (gpt-3.5-turbo在某些地区不可用)
     api_key_env: "OPENROUTER_API_KEY"  # 使用OpenRouter API密钥
@@ -15,10 +15,10 @@ models:
       http_referer: "https://github.com/dd-Dog/Translator_online"
       x_title: "Translator Agent"
   
-  # Gemini (用于Translator-A主译)
+  # Gemini (用于Translator-A主译) - 已禁用，使用免费模型
   # 通过OpenRouter调用（国内可用）
   gemini:
-    enabled: true
+    enabled: false
     provider: "gemini"
     model: "google/gemini-2.5-flash"  # OpenRouter模型ID，也可用 google/gemini-2.5-pro
     api_key_env: "OPENROUTER_API_KEY"  # 使用OpenRouter API密钥
@@ -30,25 +30,49 @@ models:
       x_title: "Translator Agent"
   
   # Qwen (用于Translator-B对照译和Stylist)
+  # 支持多个模型：qwen-turbo（免费额度）, qwen-plus, qwen-max
   qwen:
     enabled: true
     provider: "qwen"
-    model: "qwen-turbo"  # 或 qwen-plus, qwen-max
+    model: "qwen-turbo"  # 免费模型：qwen-turbo, 付费：qwen-plus, qwen-max
     api_key_env: "QWEN_API_KEY"
     base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
     params:
       temperature: 0.4
       max_tokens: 2000
   
-  # DeepSeek (可选，用于Translator-B对照译和Stylist)
+  # Qwen Plus (可选，更高质量)
+  qwen_plus:
+    enabled: true
+    provider: "qwen"
+    model: "qwen-plus"  # 付费模型，质量更高
+    api_key_env: "QWEN_API_KEY"
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    params:
+      temperature: 0.4
+      max_tokens: 2000
+  
+  # DeepSeek (用于Planner, Checker, Aggregator, Translator-A)
+  # 支持多个模型：deepseek-chat（免费）, deepseek-reasoner（推理模型）
   deepseek:
-    enabled: false
+    enabled: true
     provider: "deepseek"
-    model: "deepseek-chat"
+    model: "deepseek-chat"  # 免费模型
     api_key_env: "DEEPSEEK_API_KEY"
     base_url: "https://api.deepseek.com"
     params:
-      temperature: 0.4
+      temperature: 0.3
+      max_tokens: 2000
+  
+  # DeepSeek V3 (可选，更高质量)
+  deepseek_v3:
+    enabled: true
+    provider: "deepseek"
+    model: "deepseek-chat"  # 如果API支持v3，可以改为 "deepseek-chat-v3"
+    api_key_env: "DEEPSEEK_API_KEY"
+    base_url: "https://api.deepseek.com"
+    params:
+      temperature: 0.3
       max_tokens: 2000
   
   # Claude (可选)
@@ -66,19 +90,45 @@ models:
       x_title: "Translator Agent"
 
 # 工作流Agent配置
+# 免费模型配置（使用DeepSeek和Qwen）
 workflow:
   planner:
-    model: "openai"  # 使用OpenAI作为Planner
+    model: "deepseek"  # 使用DeepSeek作为Planner（免费）
   translator_a:
-    model: "gemini"  # 使用Gemini作为主译
+    model: "deepseek"  # 使用DeepSeek作为主译（免费）
   translator_b:
-    model: "qwen"  # 使用Qwen作为对照译（或deepseek）
+    model: "qwen"  # 使用Qwen作为对照译（免费额度）
   checker:
-    model: "openai"  # 使用OpenAI作为Checker
+    model: "deepseek"  # 使用DeepSeek作为Checker（免费）
   stylist:
-    model: "qwen"  # 使用Qwen作为Stylist（或deepseek）
+    model: "qwen"  # 使用Qwen作为Stylist（免费额度）
   aggregator:
-    model: "openai"  # 使用OpenAI作为Aggregator
+    model: "deepseek"  # 使用DeepSeek作为Aggregator（免费）
+  
+  # 可选：使用不同模型组合
+  # 方案1: 全部使用DeepSeek（最省钱）
+  # planner: "deepseek"
+  # translator_a: "deepseek"
+  # translator_b: "deepseek"
+  # checker: "deepseek"
+  # stylist: "deepseek"
+  # aggregator: "deepseek"
+  
+  # 方案2: DeepSeek + Qwen混合（推荐，平衡质量和成本）
+  # planner: "deepseek"
+  # translator_a: "deepseek"
+  # translator_b: "qwen"
+  # checker: "deepseek"
+  # stylist: "qwen"
+  # aggregator: "deepseek"
+  
+  # 方案3: 使用Qwen Plus（更高质量，但需要付费）
+  # planner: "qwen_plus"
+  # translator_a: "qwen_plus"
+  # translator_b: "qwen_plus"
+  # checker: "qwen_plus"
+  # stylist: "qwen_plus"
+  # aggregator: "qwen_plus"
 
 # 风格配置
 style:
