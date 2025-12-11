@@ -1,14 +1,16 @@
 """
 FLORES数据集小规模测试脚本
 测试翻译和评估流程是否正常
+包含详细的翻译阶段日志和报告生成
 """
 
 import asyncio
 import sys
 import os
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
+import json
 import yaml
 from dotenv import load_dotenv
 
@@ -166,6 +168,277 @@ def create_pipeline(model_config: Optional[Dict] = None) -> TranslationPipeline:
     )
 
 
+async def translate_with_detailed_logging(
+    pipeline: TranslationPipeline,
+    source_text: str,
+    source_lang: str,
+    target_lang: str = "zh"
+) -> tuple[Any, Dict[str, Any]]:
+    """
+    执行翻译并记录每个阶段的详细日志
+    
+    Returns:
+        tuple: (FinalTranslation结果, 详细日志字典)
+    """
+    detailed_log = {
+        "stages": []
+    }
+    
+    try:
+        # 阶段1: 任务规划
+        print(f"\n{'─'*80}")
+        print(f"📋 阶段1: 任务规划 (Planner)")
+        print(f"{'─'*80}")
+        print(f"输入:")
+        print(f"  原文: {source_text[:300]}{'...' if len(source_text) > 300 else ''}")
+        print(f"  源语言: {source_lang or '自动检测'}")
+        print(f"  目标语言: {target_lang}")
+        
+        task_plan = await pipeline.planner.plan(source_text, source_lang, target_lang)
+        
+        stage1_log = {
+            "stage": "任务规划 (Planner)",
+            "input": {
+                "text": source_text,
+                "source_lang": source_lang,
+                "target_lang": target_lang
+            },
+            "output": {
+                "source_lang": task_plan.source_lang,
+                "target_lang": task_plan.target_lang,
+                "tasks_count": len(task_plan.tasks),
+                "tasks": [
+                    {
+                        "segment_id": task.get('segment_id'),
+                        "text": task.get('text', '')[:200] + ('...' if len(task.get('text', '')) > 200 else ''),
+                        "needs_double_translation": task.get('needs_double_translation', False)
+                    }
+                    for task in task_plan.tasks
+                ]
+            }
+        }
+        detailed_log["stages"].append(stage1_log)
+        
+        print(f"输出:")
+        print(f"  检测到的源语言: {task_plan.source_lang}")
+        print(f"  任务数量: {len(task_plan.tasks)}")
+        for i, task in enumerate(task_plan.tasks, 1):
+            print(f"  任务{i}: {task.get('text', '')[:100]}{'...' if len(task.get('text', '')) > 100 else ''}")
+        
+        # 处理每个任务
+        final_segments = []
+        all_explainability_reports = []
+        all_stage_logs = []
+        
+        for task_idx, task in enumerate(task_plan.tasks, 1):
+            segment_id = task['segment_id']
+            segment_text = task['text']
+            needs_double = task.get('needs_double_translation', False)
+            
+            print(f"\n{'─'*80}")
+            print(f"处理任务 {task_idx}/{len(task_plan.tasks)} (Segment ID: {segment_id})")
+            print(f"{'─'*80}")
+            
+            task_stages = []
+            
+            # 阶段2: 主翻译（Translator-A）
+            print(f"\n📝 阶段2: 主翻译 (Translator-A)")
+            print(f"输入: {segment_text[:200]}{'...' if len(segment_text) > 200 else ''}")
+            
+            draft_a = await pipeline.translator_a.translate(
+                segment_text,
+                task_plan.source_lang,
+                task_plan.target_lang,
+                segment_id
+            )
+            
+            stage2_log = {
+                "stage": "主翻译 (Translator-A)",
+                "input": segment_text,
+                "output": draft_a.translated_text,
+                "model": pipeline.translator_a.model.model_name if hasattr(pipeline.translator_a, 'model') else "Unknown"
+            }
+            task_stages.append(stage2_log)
+            
+            print(f"输出: {draft_a.translated_text[:200]}{'...' if len(draft_a.translated_text) > 200 else ''}")
+            
+            # 阶段3: 对照翻译（Translator-B）
+            print(f"\n📝 阶段3: 对照翻译 (Translator-B)")
+            print(f"输入: {segment_text[:200]}{'...' if len(segment_text) > 200 else ''}")
+            
+            draft_b = await pipeline.translator_b.translate(
+                segment_text,
+                task_plan.source_lang,
+                task_plan.target_lang,
+                segment_id
+            )
+            
+            stage3_log = {
+                "stage": "对照翻译 (Translator-B)",
+                "input": segment_text,
+                "output": draft_b.translated_text,
+                "model": pipeline.translator_b.model.model_name if hasattr(pipeline.translator_b, 'model') else "Unknown"
+            }
+            task_stages.append(stage3_log)
+            
+            print(f"输出: {draft_b.translated_text[:200]}{'...' if len(draft_b.translated_text) > 200 else ''}")
+            
+            # 阶段4: 一致性检查
+            print(f"\n🔍 阶段4: 质量检查 (Checker)")
+            print(f"输入:")
+            print(f"  原文: {segment_text[:150]}{'...' if len(segment_text) > 150 else ''}")
+            print(f"  翻译A: {draft_a.translated_text[:150]}{'...' if len(draft_a.translated_text) > 150 else ''}")
+            print(f"  翻译B: {draft_b.translated_text[:150]}{'...' if len(draft_b.translated_text) > 150 else ''}")
+            
+            checker_report = await pipeline.checker.check(
+                segment_text,
+                draft_a,
+                draft_b,
+                segment_id
+            )
+            
+            stage4_log = {
+                "stage": "质量检查 (Checker)",
+                "input": {
+                    "source": segment_text,
+                    "translation_a": draft_a.translated_text,
+                    "translation_b": draft_b.translated_text
+                },
+                "output": {
+                    "consistent": segment_id in checker_report.consistent_segments,
+                    "has_conflicts": len(checker_report.conflicting_segments) > 0,
+                    "conflicts_count": len(checker_report.conflicting_segments),
+                    "quality_score": {
+                        "adequacy": checker_report.quality_scores.get(segment_id, {}).adequacy if segment_id in checker_report.quality_scores else None,
+                        "fluency": checker_report.quality_scores.get(segment_id, {}).fluency if segment_id in checker_report.quality_scores else None,
+                        "terminology": checker_report.quality_scores.get(segment_id, {}).terminology if segment_id in checker_report.quality_scores else None,
+                        "overall": checker_report.quality_scores.get(segment_id, {}).overall if segment_id in checker_report.quality_scores else None
+                    } if segment_id in checker_report.quality_scores else None
+                }
+            }
+            task_stages.append(stage4_log)
+            
+            if segment_id in checker_report.quality_scores:
+                qs = checker_report.quality_scores[segment_id]
+                print(f"输出:")
+                print(f"  质量评分: {qs.overall:.4f} (adequacy: {qs.adequacy:.4f}, fluency: {qs.fluency:.4f}, terminology: {qs.terminology:.4f})")
+                print(f"  一致性: {'一致' if segment_id in checker_report.consistent_segments else '存在冲突'}")
+            
+            # 选择最佳翻译
+            best_draft = pipeline._select_best_draft(draft_a, draft_b, checker_report)
+            print(f"  选择: {'翻译A' if best_draft == draft_a else '翻译B'}")
+            
+            # 阶段5: 风格化
+            print(f"\n🎨 阶段5: 风格化 (Stylist)")
+            print(f"输入: {best_draft.translated_text[:200]}{'...' if len(best_draft.translated_text) > 200 else ''}")
+            
+            stylist_result = await pipeline.stylist.style(
+                best_draft.translated_text,
+                segment_text
+            )
+            
+            stage5_log = {
+                "stage": "风格化 (Stylist)",
+                "input": best_draft.translated_text,
+                "output": stylist_result.styled_text,
+                "terminology_changes": stylist_result.terminology_changes,
+                "style_changes": stylist_result.style_changes
+            }
+            task_stages.append(stage5_log)
+            
+            print(f"输出: {stylist_result.styled_text[:200]}{'...' if len(stylist_result.styled_text) > 200 else ''}")
+            if stylist_result.terminology_changes:
+                print(f"  术语变更: {len(stylist_result.terminology_changes)} 处")
+            if stylist_result.style_changes:
+                print(f"  风格变更: {len(stylist_result.style_changes)} 处")
+            
+            # 阶段6: 最终整合
+            print(f"\n🔧 阶段6: 最终整合 (Aggregator)")
+            print(f"输入:")
+            print(f"  原文: {segment_text[:150]}{'...' if len(segment_text) > 150 else ''}")
+            print(f"  翻译A: {draft_a.translated_text[:150]}{'...' if len(draft_a.translated_text) > 150 else ''}")
+            print(f"  翻译B: {draft_b.translated_text[:150]}{'...' if len(draft_b.translated_text) > 150 else ''}")
+            print(f"  风格化结果: {stylist_result.styled_text[:150]}{'...' if len(stylist_result.styled_text) > 150 else ''}")
+            
+            final_result = await pipeline.aggregator.aggregate(
+                segment_text,
+                [draft_a, draft_b],
+                checker_report,
+                stylist_result,
+                segment_id
+            )
+            
+            stage6_log = {
+                "stage": "最终整合 (Aggregator)",
+                "input": {
+                    "source": segment_text,
+                    "draft_a": draft_a.translated_text,
+                    "draft_b": draft_b.translated_text,
+                    "styled_text": stylist_result.styled_text
+                },
+                "output": final_result.translated_text,
+                "quality_score": {
+                    "adequacy": final_result.explainability_report.final_quality_score.adequacy,
+                    "fluency": final_result.explainability_report.final_quality_score.fluency,
+                    "terminology": final_result.explainability_report.final_quality_score.terminology,
+                    "overall": final_result.explainability_report.final_quality_score.overall
+                } if final_result.explainability_report and final_result.explainability_report.final_quality_score else None
+            }
+            task_stages.append(stage6_log)
+            
+            print(f"输出: {final_result.translated_text[:200]}{'...' if len(final_result.translated_text) > 200 else ''}")
+            if final_result.explainability_report and final_result.explainability_report.final_quality_score:
+                qs = final_result.explainability_report.final_quality_score
+                print(f"  最终质量评分: {qs.overall:.4f}")
+            
+            final_segments.append({
+                'segment_id': segment_id,
+                'text': final_result.translated_text
+            })
+            all_explainability_reports.append(final_result.explainability_report)
+            all_stage_logs.append({
+                "segment_id": segment_id,
+                "stages": task_stages
+            })
+        
+        # 合并所有段落
+        final_text = ' '.join([seg['text'] for seg in final_segments])
+        merged_explainability = pipeline._merge_explainability_reports(all_explainability_reports)
+        
+        from src.agents.workflow import FinalTranslation
+        final_translation = FinalTranslation(
+            translated_text=final_text,
+            explainability_report=merged_explainability,
+            source_lang=task_plan.source_lang,
+            target_lang=task_plan.target_lang,
+            processing_stages=[
+                "Task Planning",
+                "Primary Translation (Translator-A)",
+                "Comparison Translation (Translator-B)",
+                "Quality Checking",
+                "Styling",
+                "Final Aggregation"
+            ]
+        )
+        
+        detailed_log["stages"].extend(all_stage_logs)
+        detailed_log["final_translation"] = final_text
+        detailed_log["final_quality_score"] = {
+            "adequacy": merged_explainability.final_quality_score.adequacy,
+            "fluency": merged_explainability.final_quality_score.fluency,
+            "terminology": merged_explainability.final_quality_score.terminology,
+            "overall": merged_explainability.final_quality_score.overall
+        } if merged_explainability.final_quality_score else None
+        
+        return final_translation, detailed_log
+        
+    except Exception as e:
+        detailed_log["error"] = str(e)
+        import traceback
+        detailed_log["traceback"] = traceback.format_exc()
+        raise
+
+
 async def test_single_sample(
     pipeline: TranslationPipeline,
     eval_service,
@@ -178,31 +451,34 @@ async def test_single_sample(
     print(f"\n{'='*80}")
     print(f"样本 {index + 1}")
     print(f"{'='*80}")
-    print(f"原文 ({LANG_NAMES.get(source_lang, source_lang)}): {source_text[:200]}{'...' if len(source_text) > 200 else ''}")
-    print(f"参考翻译: {reference[:200]}{'...' if len(reference) > 200 else ''}")
+    print(f"原文 ({LANG_NAMES.get(source_lang, source_lang)}): {source_text}")
+    print(f"参考翻译: {reference}")
     
     result = {
         "index": index,
         "source": source_text,
         "reference": reference,
         "translation": None,
+        "translation_stages": None,
         "mqm_score": None,
         "evaluation": None,
         "error": None
     }
     
-    # 步骤1: 翻译
-    print(f"\n[1/2] 执行翻译...")
+    # 步骤1: 翻译（带详细日志）
+    print(f"\n[1/2] 执行翻译（详细日志模式）...")
     try:
-        translation_result = await pipeline.translate(
-            text=source_text,
-            source_lang=source_lang,
-            target_lang="zh"
+        translation_result, detailed_log = await translate_with_detailed_logging(
+            pipeline,
+            source_text,
+            source_lang,
+            "zh"
         )
         
         result["translation"] = translation_result.translated_text
-        print(f"✅ 翻译完成")
-        print(f"翻译结果: {translation_result.translated_text[:200]}{'...' if len(translation_result.translated_text) > 200 else ''}")
+        result["translation_stages"] = detailed_log
+        print(f"\n✅ 翻译完成")
+        print(f"最终翻译: {translation_result.translated_text}")
         
         # 提取MQM评分
         if translation_result.explainability_report and translation_result.explainability_report.final_quality_score:
@@ -378,6 +654,136 @@ async def main():
     else:
         print(f"\n✅ 所有测试通过！流程正常。")
     
+    # 生成详细报告
+    print(f"\n{'='*80}")
+    print("生成详细报告...")
+    print(f"{'='*80}")
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = Path(__file__).parent / "results" / "flores_test"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 保存JSON报告
+    json_path = output_dir / f"test_report_{timestamp}.json"
+    report_data = {
+        "test_config": {
+            "language": lang_name,
+            "lang_code": TEST_LANG,
+            "samples": TEST_SAMPLES,
+            "dataset_type": DATASET_TYPE,
+            "timestamp": timestamp
+        },
+        "summary": {
+            "total_samples": len(results),
+            "successful": successful,
+            "failed": failed,
+            "avg_final_score": avg_score if successful > 0 else None,
+            "avg_metrics": {
+                metric: sum([r["evaluation"].get(metric, 0) for r in results 
+                           if r.get("evaluation") and r["evaluation"].get(metric, 0) > 0]) / 
+                        len([r for r in results if r.get("evaluation") and r["evaluation"].get(metric, 0) > 0])
+                for metric in metrics
+                if len([r for r in results if r.get("evaluation") and r["evaluation"].get(metric, 0) > 0]) > 0
+            }
+        },
+        "results": results
+    }
+    
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(report_data, f, ensure_ascii=False, indent=2)
+    
+    print(f"✅ JSON报告已保存: {json_path}")
+    
+    # 保存Markdown报告
+    md_path = output_dir / f"test_report_{timestamp}.md"
+    with open(md_path, 'w', encoding='utf-8') as f:
+        f.write(f"# FLORES数据集测试报告\n\n")
+        f.write(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        f.write(f"**语言对**: {lang_name} → 中文\n\n")
+        f.write(f"**样本数量**: {len(results)}\n\n")
+        f.write(f"**成功**: {successful} | **失败**: {failed}\n\n")
+        
+        if successful > 0:
+            f.write(f"## 总体统计\n\n")
+            f.write(f"- **平均综合评分**: {avg_score:.4f}\n\n")
+            f.write(f"### 各指标平均分\n\n")
+            for metric in metrics:
+                metric_scores = [r["evaluation"].get(metric, 0) for r in results 
+                               if r.get("evaluation") and r["evaluation"].get(metric, 0) > 0]
+                if metric_scores:
+                    avg_metric = sum(metric_scores) / len(metric_scores)
+                    f.write(f"- **{metric.upper()}**: {avg_metric:.4f}\n")
+            f.write("\n")
+        
+        f.write(f"## 详细结果\n\n")
+        for r in results:
+            f.write(f"### 样本 {r['index'] + 1}\n\n")
+            f.write(f"**原文**: {r['source']}\n\n")
+            f.write(f"**参考翻译**: {r['reference']}\n\n")
+            f.write(f"**翻译结果**: {r['translation'] or '翻译失败'}\n\n")
+            
+            # 翻译阶段详情
+            if r.get("translation_stages"):
+                f.write(f"#### 翻译阶段详情\n\n")
+                stages = r["translation_stages"]
+                
+                # 任务规划
+                if stages.get("stages") and len(stages["stages"]) > 0:
+                    plan_stage = stages["stages"][0]
+                    if plan_stage.get("stage") == "任务规划 (Planner)":
+                        f.write(f"##### 阶段1: 任务规划\n\n")
+                        f.write(f"- **检测到的源语言**: {plan_stage['output'].get('source_lang')}\n")
+                        f.write(f"- **任务数量**: {plan_stage['output'].get('tasks_count')}\n")
+                        f.write(f"- **任务列表**:\n")
+                        for task in plan_stage['output'].get('tasks', []):
+                            f.write(f"  - 任务 {task.get('segment_id')}: {task.get('text', '')[:100]}...\n")
+                        f.write("\n")
+                
+                # 各任务的翻译阶段
+                for task_log in stages.get("stages", []):
+                    if isinstance(task_log, dict) and "segment_id" in task_log:
+                        f.write(f"##### 任务 {task_log.get('segment_id')} 的翻译流程\n\n")
+                        for stage in task_log.get("stages", []):
+                            stage_name = stage.get("stage", "")
+                            f.write(f"**{stage_name}**\n\n")
+                            if isinstance(stage.get("input"), str):
+                                f.write(f"- 输入: {stage['input'][:200]}...\n")
+                            elif isinstance(stage.get("input"), dict):
+                                f.write(f"- 输入: {json.dumps(stage['input'], ensure_ascii=False, indent=2)}\n")
+                            if isinstance(stage.get("output"), str):
+                                f.write(f"- 输出: {stage['output'][:200]}...\n")
+                            elif isinstance(stage.get("output"), dict):
+                                f.write(f"- 输出: {json.dumps(stage['output'], ensure_ascii=False, indent=2)}\n")
+                            f.write("\n")
+            
+            # MQM评分
+            if r.get("mqm_score"):
+                f.write(f"#### MQM评分\n\n")
+                mqm = r["mqm_score"]
+                f.write(f"- **总体**: {mqm.get('overall', 0):.4f}\n")
+                f.write(f"- **充分性**: {mqm.get('adequacy', 0):.4f}\n")
+                f.write(f"- **流畅性**: {mqm.get('fluency', 0):.4f}\n")
+                f.write(f"- **术语准确性**: {mqm.get('terminology', 0):.4f}\n\n")
+            
+            # 评估结果
+            if r.get("evaluation"):
+                f.write(f"#### 评估结果\n\n")
+                eval_data = r["evaluation"]
+                f.write(f"- **BLEU**: {eval_data.get('bleu', 0):.4f}\n")
+                if eval_data.get('comet', 0) > 0:
+                    f.write(f"- **COMET**: {eval_data.get('comet', 0):.4f}\n")
+                if eval_data.get('bleurt', 0) > 0:
+                    f.write(f"- **BLEURT**: {eval_data.get('bleurt', 0):.4f}\n")
+                f.write(f"- **BERTScore**: {eval_data.get('bertscore_f1', 0):.4f}\n")
+                f.write(f"- **ChrF**: {eval_data.get('chrf', 0):.4f}\n")
+                f.write(f"- **综合评分**: {eval_data.get('final_score', 0):.4f}\n\n")
+            
+            if r.get("error"):
+                f.write(f"**错误**: {r['error']}\n\n")
+            
+            f.write("---\n\n")
+    
+    print(f"✅ Markdown报告已保存: {md_path}")
     print(f"\n{'='*80}")
 
 
