@@ -98,6 +98,14 @@ class EvaluationAPIClient:
             EvaluationScore: 评估分数，如果失败返回None
         """
         try:
+            # 验证必需字段
+            if not translation:
+                print("[ERROR] translation字段为空")
+                return None
+            if not reference:
+                print("[ERROR] reference字段为空，BLEURT需要reference字段")
+                return None
+            
             payload = {
                 "translation": translation,
                 "reference": reference
@@ -108,6 +116,10 @@ class EvaluationAPIClient:
             
             if mqm_score:
                 payload["mqm_score"] = mqm_score
+            
+            # 调试日志：确认payload包含reference
+            print(f"[DEBUG] API请求payload包含字段: {list(payload.keys())}")
+            print(f"[DEBUG] reference字段长度: {len(reference) if reference else 0} 字符")
             
             response = self._session.post(
                 f"{self.base_url}/eval",
