@@ -186,9 +186,11 @@ async def translate_with_detailed_logging(
     
     try:
         # 阶段1: 任务规划
+        planner_model_name = pipeline.planner.model.model_name if hasattr(pipeline.planner, 'model') and hasattr(pipeline.planner.model, 'model_name') else "Unknown"
         print(f"\n{'─'*80}")
         print(f"📋 阶段1: 任务规划 (Planner)")
         print(f"{'─'*80}")
+        print(f"使用模型: {planner_model_name}")
         print(f"输入:")
         print(f"  原文: {source_text[:300]}{'...' if len(source_text) > 300 else ''}")
         print(f"  源语言: {source_lang or '自动检测'}")
@@ -198,6 +200,7 @@ async def translate_with_detailed_logging(
         
         stage1_log = {
             "stage": "任务规划 (Planner)",
+            "model": planner_model_name,
             "input": {
                 "text": source_text,
                 "source_lang": source_lang,
@@ -242,7 +245,9 @@ async def translate_with_detailed_logging(
             task_stages = []
             
             # 阶段2: 主翻译（Translator-A）
+            translator_a_model_name = pipeline.translator_a.model.model_name if hasattr(pipeline.translator_a, 'model') and hasattr(pipeline.translator_a.model, 'model_name') else "Unknown"
             print(f"\n📝 阶段2: 主翻译 (Translator-A)")
+            print(f"使用模型: {translator_a_model_name}")
             print(f"输入: {segment_text[:200]}{'...' if len(segment_text) > 200 else ''}")
             
             draft_a = await pipeline.translator_a.translate(
@@ -254,16 +259,18 @@ async def translate_with_detailed_logging(
             
             stage2_log = {
                 "stage": "主翻译 (Translator-A)",
+                "model": translator_a_model_name,
                 "input": segment_text,
-                "output": draft_a.translated_text,
-                "model": pipeline.translator_a.model.model_name if hasattr(pipeline.translator_a, 'model') else "Unknown"
+                "output": draft_a.translated_text
             }
             task_stages.append(stage2_log)
             
             print(f"输出: {draft_a.translated_text[:200]}{'...' if len(draft_a.translated_text) > 200 else ''}")
             
             # 阶段3: 对照翻译（Translator-B）
+            translator_b_model_name = pipeline.translator_b.model.model_name if hasattr(pipeline.translator_b, 'model') and hasattr(pipeline.translator_b.model, 'model_name') else "Unknown"
             print(f"\n📝 阶段3: 对照翻译 (Translator-B)")
+            print(f"使用模型: {translator_b_model_name}")
             print(f"输入: {segment_text[:200]}{'...' if len(segment_text) > 200 else ''}")
             
             draft_b = await pipeline.translator_b.translate(
@@ -275,16 +282,18 @@ async def translate_with_detailed_logging(
             
             stage3_log = {
                 "stage": "对照翻译 (Translator-B)",
+                "model": translator_b_model_name,
                 "input": segment_text,
-                "output": draft_b.translated_text,
-                "model": pipeline.translator_b.model.model_name if hasattr(pipeline.translator_b, 'model') else "Unknown"
+                "output": draft_b.translated_text
             }
             task_stages.append(stage3_log)
             
             print(f"输出: {draft_b.translated_text[:200]}{'...' if len(draft_b.translated_text) > 200 else ''}")
             
             # 阶段4: 一致性检查
+            checker_model_name = pipeline.checker.model.model_name if hasattr(pipeline.checker, 'model') and hasattr(pipeline.checker.model, 'model_name') else "Unknown"
             print(f"\n🔍 阶段4: 质量检查 (Checker)")
+            print(f"使用模型: {checker_model_name}")
             print(f"输入:")
             print(f"  原文: {segment_text[:150]}{'...' if len(segment_text) > 150 else ''}")
             print(f"  翻译A: {draft_a.translated_text[:150]}{'...' if len(draft_a.translated_text) > 150 else ''}")
@@ -299,6 +308,7 @@ async def translate_with_detailed_logging(
             
             stage4_log = {
                 "stage": "质量检查 (Checker)",
+                "model": checker_model_name,
                 "input": {
                     "source": segment_text,
                     "translation_a": draft_a.translated_text,
@@ -329,7 +339,9 @@ async def translate_with_detailed_logging(
             print(f"  选择: {'翻译A' if best_draft == draft_a else '翻译B'}")
             
             # 阶段5: 风格化
+            stylist_model_name = pipeline.stylist.model.model_name if hasattr(pipeline.stylist, 'model') and hasattr(pipeline.stylist.model, 'model_name') else "Unknown"
             print(f"\n🎨 阶段5: 风格化 (Stylist)")
+            print(f"使用模型: {stylist_model_name}")
             print(f"输入: {best_draft.translated_text[:200]}{'...' if len(best_draft.translated_text) > 200 else ''}")
             
             stylist_result = await pipeline.stylist.style(
@@ -339,6 +351,7 @@ async def translate_with_detailed_logging(
             
             stage5_log = {
                 "stage": "风格化 (Stylist)",
+                "model": stylist_model_name,
                 "input": best_draft.translated_text,
                 "output": stylist_result.styled_text,
                 "terminology_changes": stylist_result.terminology_changes,
@@ -353,7 +366,9 @@ async def translate_with_detailed_logging(
                 print(f"  风格变更: {len(stylist_result.style_changes)} 处")
             
             # 阶段6: 最终整合
+            aggregator_model_name = pipeline.aggregator.model.model_name if hasattr(pipeline.aggregator, 'model') and hasattr(pipeline.aggregator.model, 'model_name') else "Unknown"
             print(f"\n🔧 阶段6: 最终整合 (Aggregator)")
+            print(f"使用模型: {aggregator_model_name}")
             print(f"输入:")
             print(f"  原文: {segment_text[:150]}{'...' if len(segment_text) > 150 else ''}")
             print(f"  翻译A: {draft_a.translated_text[:150]}{'...' if len(draft_a.translated_text) > 150 else ''}")
@@ -370,6 +385,7 @@ async def translate_with_detailed_logging(
             
             stage6_log = {
                 "stage": "最终整合 (Aggregator)",
+                "model": aggregator_model_name,
                 "input": {
                     "source": segment_text,
                     "draft_a": draft_a.translated_text,
@@ -513,10 +529,12 @@ async def test_single_sample(
             print(f"✅ 评估完成")
             print(f"评估结果:")
             print(f"  BLEU: {eval_result.get('bleu', 0):.4f}")
-            if eval_result.get('comet', 0) > 0:
-                print(f"  COMET: {eval_result.get('comet', 0):.4f}")
-            if eval_result.get('bleurt', 0) > 0:
-                print(f"  BLEURT: {eval_result.get('bleurt', 0):.4f}")
+            comet_score = eval_result.get('comet', 0)
+            if comet_score > 0:
+                print(f"  COMET: {comet_score:.4f}")
+            bleurt_score = eval_result.get('bleurt', 0)
+            # 显示BLEURT评分（即使为0也显示，以便调试）
+            print(f"  BLEURT: {bleurt_score:.4f}" + (" (未计算)" if bleurt_score == 0 else ""))
             print(f"  BERTScore: {eval_result.get('bertscore_f1', 0):.4f}")
             print(f"  ChrF: {eval_result.get('chrf', 0):.4f}")
             print(f"  综合评分: {eval_result.get('final_score', 0):.4f}")
@@ -732,6 +750,7 @@ async def main():
                     plan_stage = stages["stages"][0]
                     if plan_stage.get("stage") == "任务规划 (Planner)":
                         f.write(f"##### 阶段1: 任务规划\n\n")
+                        f.write(f"- **使用模型**: {plan_stage.get('model', 'Unknown')}\n")
                         f.write(f"- **检测到的源语言**: {plan_stage['output'].get('source_lang')}\n")
                         f.write(f"- **任务数量**: {plan_stage['output'].get('tasks_count')}\n")
                         f.write(f"- **任务列表**:\n")
@@ -745,7 +764,8 @@ async def main():
                         f.write(f"##### 任务 {task_log.get('segment_id')} 的翻译流程\n\n")
                         for stage in task_log.get("stages", []):
                             stage_name = stage.get("stage", "")
-                            f.write(f"**{stage_name}**\n\n")
+                            model_name = stage.get("model", "Unknown")
+                            f.write(f"**{stage_name}** (模型: {model_name})\n\n")
                             if isinstance(stage.get("input"), str):
                                 f.write(f"- 输入: {stage['input'][:200]}...\n")
                             elif isinstance(stage.get("input"), dict):
@@ -770,10 +790,12 @@ async def main():
                 f.write(f"#### 评估结果\n\n")
                 eval_data = r["evaluation"]
                 f.write(f"- **BLEU**: {eval_data.get('bleu', 0):.4f}\n")
-                if eval_data.get('comet', 0) > 0:
-                    f.write(f"- **COMET**: {eval_data.get('comet', 0):.4f}\n")
-                if eval_data.get('bleurt', 0) > 0:
-                    f.write(f"- **BLEURT**: {eval_data.get('bleurt', 0):.4f}\n")
+                comet_score = eval_data.get('comet', 0)
+                if comet_score > 0:
+                    f.write(f"- **COMET**: {comet_score:.4f}\n")
+                bleurt_score = eval_data.get('bleurt', 0)
+                # 始终显示BLEURT评分（即使为0）
+                f.write(f"- **BLEURT**: {bleurt_score:.4f}" + (" (未计算)" if bleurt_score == 0 else "") + "\n")
                 f.write(f"- **BERTScore**: {eval_data.get('bertscore_f1', 0):.4f}\n")
                 f.write(f"- **ChrF**: {eval_data.get('chrf', 0):.4f}\n")
                 f.write(f"- **综合评分**: {eval_data.get('final_score', 0):.4f}\n\n")
