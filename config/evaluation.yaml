@@ -4,7 +4,7 @@
 # 如果评估功能运行在独立的API服务中，配置此部分
 api:
   # 是否启用API模式（如果为true，将使用HTTP API调用评估服务）
-  enabled: false
+  enabled: true
   
   # 评估API服务器地址
   base_url: "http://localhost:5001"
