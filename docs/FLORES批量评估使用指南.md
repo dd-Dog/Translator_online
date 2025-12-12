@@ -58,6 +58,37 @@ python evaluate_flores_batch.py
 
 脚本会在 `results/flores_evaluation/` 目录下生成结果文件：
 
+### 目录结构
+
+每次运行会生成一个统一的时间戳子目录（格式：`temp_YYYYMMDDHHMMSS`），所有临时文件和最终结果都保存在该目录下：
+
+```
+results/flores_evaluation/
+├── translations_temp/
+│   └── temp_202512121347/          # 本次运行的时间戳目录
+│       ├── translations_en.jsonl   # 英语翻译结果（实时保存）
+│       ├── translations_en.meta.json
+│       ├── translations_de.jsonl   # 德语翻译结果
+│       ├── translations_de.meta.json
+│       └── ...                      # 其他语言
+├── evaluations_temp/
+│   └── temp_202512121347/          # 对应的时间戳目录
+│       ├── evaluations_en.jsonl    # 英语评估结果（实时保存）
+│       ├── evaluations_en.meta.json
+│       ├── evaluations_de.jsonl    # 德语评估结果
+│       └── ...                      # 其他语言
+├── flores_en_202512121347.json     # 最终结果（JSON格式）
+├── flores_en_202512121347.md       # 最终结果（Markdown报告）
+├── flores_de_202512121347.json
+├── flores_de_202512121347.md
+└── flores_summary_202512121347.md  # 汇总报告（所有语言）
+```
+
+**时间戳目录的优势**:
+- ✅ 避免覆盖：每次运行都有独立的目录，不会覆盖之前的结果
+- ✅ 易于管理：可以轻松识别和清理不同运行的结果
+- ✅ 支持断点恢复：临时文件保存在时间戳目录中，便于恢复
+
 ### JSON格式 (`flores_{lang_code}_{timestamp}.json`)
 
 包含完整的翻译和评估数据：
@@ -99,6 +130,23 @@ python evaluate_flores_batch.py
 - 统计摘要（平均分、各指标平均分）
 - 每个样本的详细结果
 - 评估指标（BLEU, COMET, BLEURT, BERTScore, ChrF）
+
+## 🔄 仅评估模式
+
+如果已有翻译结果，可以直接运行评估，无需重新翻译：
+
+```bash
+# 评估指定目录下的所有翻译文件
+python evaluate_flores_batch.py --eval-only results/flores_evaluation/translations_temp/
+
+# 评估指定的翻译文件
+python evaluate_flores_batch.py --eval-only results/flores_evaluation/translations_temp/temp_202512121347/translations_en.jsonl
+```
+
+**特性**:
+- ✅ 自动查找：支持递归查找时间戳子目录中的翻译文件
+- ✅ 断点恢复：如果评估中断，可以从断点继续
+- ✅ 实时保存：评估结果实时写入文件
 
 ## ⚙️ 高级配置
 
@@ -169,8 +217,15 @@ python evaluate_flores_batch.py
 
 1. **Token消耗**: 批量翻译会消耗大量API token，请确保账户有足够余额
 2. **时间成本**: 完整评估可能需要数小时，建议先用小样本测试
-3. **结果保存**: 结果会自动保存，即使中断也不会丢失已完成的部分
+3. **结果保存**: 
+   - 翻译结果实时保存到 `translations_temp/{timestamp}/` 目录
+   - 评估结果实时保存到 `evaluations_temp/{timestamp}/` 目录
+   - 即使中断也不会丢失已完成的部分
 4. **参考翻译**: 脚本会自动加载中文参考翻译，确保源文本和参考翻译数量匹配
+5. **时间戳目录**: 每次运行生成独立的时间戳目录，避免覆盖之前的结果
+6. **断点恢复**: 
+   - 翻译阶段：如果中断，可以重新运行脚本，已翻译的样本会跳过
+   - 评估阶段：如果中断，可以使用 `--eval-only` 模式继续评估
 
 ## 🎯 使用示例
 

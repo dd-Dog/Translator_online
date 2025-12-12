@@ -244,6 +244,45 @@ python test_evaluator_env.py
 
 详细配置说明请参考: `docs/评估器环境配置指南.md`
 
+### FLORES数据集批量评估
+
+使用 `evaluate_flores_batch.py` 进行批量翻译和评估：
+
+```bash
+# 完整流程（翻译+评估）
+python evaluate_flores_batch.py
+
+# 仅评估已有翻译结果
+python evaluate_flores_batch.py --eval-only results/flores_evaluation/translations_temp/
+```
+
+**输出目录结构**:
+```
+results/flores_evaluation/
+├── translations_temp/
+│   └── temp_202512121347/          # 每次运行生成一个时间戳子目录
+│       ├── translations_en.jsonl   # 各语言的翻译结果
+│       ├── translations_en.meta.json
+│       ├── translations_de.jsonl
+│       └── ...
+├── evaluations_temp/
+│   └── temp_202512121347/          # 对应的时间戳子目录
+│       ├── evaluations_en.jsonl    # 各语言的评估结果
+│       ├── evaluations_en.meta.json
+│       └── ...
+├── flores_en_202512121347.json     # 最终结果（JSON）
+├── flores_en_202512121347.md       # 最终结果（Markdown报告）
+└── flores_summary_202512121347.md  # 汇总报告
+```
+
+**特性**:
+- ✅ 实时保存：每句翻译/评估完成后立即写入文件
+- ✅ 中断恢复：支持从断点继续翻译或评估
+- ✅ 时间戳目录：每次运行生成独立的时间戳子目录，避免覆盖
+- ✅ 批量处理：支持批量翻译和评估，提高效率
+
+详细使用说明请参考: `docs/FLORES批量评估使用指南.md`
+
 ## 📁 项目结构
 
 ```
