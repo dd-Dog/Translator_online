@@ -553,19 +553,19 @@ async def test_single_sample(
 async def main():
     """主函数"""
     print("=" * 80)
-    print("FLORES数据集小规模测试")
+    print("FLORES数据集多语言测试")
     print("=" * 80)
     
     # 配置参数
-    TEST_LANG = "en"  # 测试语言（英语）
-    TEST_SAMPLES = 1  # 测试样本数（少量测试）
+    TEST_LANGS = ["en", "de", "vi", "km", "ms"]  # 测试语言：英语、德语、越南语、柬埔寨语、马来语
+    TEST_SAMPLES = 20  # 每种语言的测试样本数
     DATASET_TYPE = "dev"
     
-    lang_name = LANG_NAMES.get(TEST_LANG, TEST_LANG)
     print(f"\n测试配置:")
-    print(f"  语言: {lang_name} ({TEST_LANG})")
-    print(f"  样本数: {TEST_SAMPLES}")
+    print(f"  语言: {', '.join([LANG_NAMES.get(lang, lang) for lang in TEST_LANGS])}")
+    print(f"  每种语言样本数: {TEST_SAMPLES}")
     print(f"  数据集: {DATASET_TYPE}")
+    print(f"  总样本数: {len(TEST_LANGS) * TEST_SAMPLES}")
     
     # 步骤1: 初始化评估服务
     print(f"\n[步骤1/4] 初始化评估服务...")
@@ -597,44 +597,62 @@ async def main():
         traceback.print_exc()
         return
     
-    # 步骤3: 加载测试数据
-    print(f"\n[步骤3/4] 加载测试数据...")
-    try:
-        sources = load_flores_data(TEST_LANG, DATASET_TYPE, TEST_SAMPLES)
-        references = load_flores_data("zh", DATASET_TYPE, TEST_SAMPLES)
-        
-        if len(sources) != len(references):
-            print(f"⚠️  源文本和参考翻译数量不匹配: {len(sources)} vs {len(references)}")
-            min_len = min(len(sources), len(references))
-            sources = sources[:min_len]
-            references = references[:min_len]
-        
-        print(f"✅ 已加载 {len(sources)} 条样本")
-    except Exception as e:
-        print(f"❌ 数据加载失败: {e}")
-        import traceback
-        traceback.print_exc()
-        return
+    # 步骤3: 测试翻译和评估（多语言）
+    print(f"\n[步骤3/4] 开始测试翻译和评估...")
+    all_results = []  # 存储所有语言的结果
+    lang_results = {}  # 按语言分组的结果
     
-    # 步骤4: 测试翻译和评估
-    print(f"\n[步骤4/4] 开始测试翻译和评估...")
-    results = []
-    
-    for i, (source, reference) in enumerate(zip(sources, references)):
-        result = await test_single_sample(
-            pipeline,
-            eval_service,
-            source,
-            reference,
-            TEST_LANG,
-            i
-        )
-        results.append(result)
+    for lang_idx, test_lang in enumerate(TEST_LANGS, 1):
+        lang_name = LANG_NAMES.get(test_lang, test_lang)
+        print(f"\n{'='*80}")
+        print(f"处理语言 {lang_idx}/{len(TEST_LANGS)}: {lang_name} ({test_lang})")
+        print(f"{'='*80}")
         
-        # 样本间短暂休息
-        if i < len(sources) - 1:
-            print(f"\n等待 1 秒后继续下一个样本...")
-            await asyncio.sleep(1)
+        # 加载当前语言的数据
+        try:
+            sources = load_flores_data(test_lang, DATASET_TYPE, TEST_SAMPLES)
+            references = load_flores_data("zh", DATASET_TYPE, TEST_SAMPLES)
+            
+            if len(sources) != len(references):
+                print(f"⚠️  源文本和参考翻译数量不匹配: {len(sources)} vs {len(references)}")
+                min_len = min(len(sources), len(references))
+                sources = sources[:min_len]
+                references = references[:min_len]
+            
+            print(f"✅ 已加载 {len(sources)} 条样本")
+        except Exception as e:
+            print(f"❌ 数据加载失败: {e}")
+            import traceback
+            traceback.print_exc()
+            continue
+        
+        # 测试当前语言的样本
+        lang_results[test_lang] = []
+        for i, (source, reference) in enumerate(zip(sources, references), 1):
+            print(f"\n[{lang_name}] 样本 {i}/{len(sources)}")
+            result = await test_single_sample(
+                pipeline,
+                eval_service,
+                source,
+                reference,
+                test_lang,
+                len(all_results)  # 全局索引
+            )
+            result["source_lang"] = test_lang
+            result["source_lang_name"] = lang_name
+            all_results.append(result)
+            lang_results[test_lang].append(result)
+            
+            # 样本间短暂休息
+            if i < len(sources):
+                await asyncio.sleep(1)
+        
+        # 语言间休息
+        if lang_idx < len(TEST_LANGS):
+            print(f"\n等待 2 秒后继续下一个语言...")
+            await asyncio.sleep(2)
+    
+    results = all_results
     
     # 总结
     print(f"\n{'='*80}")
@@ -685,9 +703,10 @@ async def main():
     json_path = output_dir / f"test_report_{timestamp}.json"
     report_data = {
         "test_config": {
-            "language": lang_name,
-            "lang_code": TEST_LANG,
-            "samples": TEST_SAMPLES,
+            "languages": TEST_LANGS,
+            "language_names": [LANG_NAMES.get(lang, lang) for lang in TEST_LANGS],
+            "samples_per_lang": TEST_SAMPLES,
+            "total_samples": len(results),
             "dataset_type": DATASET_TYPE,
             "timestamp": timestamp
         },
@@ -715,10 +734,11 @@ async def main():
     # 保存Markdown报告
     md_path = output_dir / f"test_report_{timestamp}.md"
     with open(md_path, 'w', encoding='utf-8') as f:
-        f.write(f"# FLORES数据集测试报告\n\n")
+        f.write(f"# FLORES数据集多语言测试报告\n\n")
         f.write(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        f.write(f"**语言对**: {lang_name} → 中文\n\n")
-        f.write(f"**样本数量**: {len(results)}\n\n")
+        f.write(f"**测试语言**: {', '.join([LANG_NAMES.get(lang, lang) for lang in TEST_LANGS])} → 中文\n\n")
+        f.write(f"**每种语言样本数**: {TEST_SAMPLES}\n\n")
+        f.write(f"**总样本数量**: {len(results)}\n\n")
         f.write(f"**成功**: {successful} | **失败**: {failed}\n\n")
         
         if successful > 0:
@@ -738,34 +758,70 @@ async def main():
             f.write(f"| 源语言 | 目标语言 | BLEU | COMET | BERTScore F1 | BLEURT | chrF | 综合评分 | MQM_ADEQUACY | MQM_FLUENCY | MQM_OVERALL | MQM_TERMINOLOGY |\n")
             f.write(f"| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n")
             
-            # 计算当前语言对的平均分
-            eval_results = [r["evaluation"] for r in results if r.get("evaluation")]
-            if eval_results:
-                # 计算各指标平均值
-                avg_bleu = sum(e.get('bleu', 0) for e in eval_results) / len(eval_results)
-                avg_comet = sum(e.get('comet', 0) for e in eval_results if e.get('comet', 0) > 0)
-                comet_count = sum(1 for e in eval_results if e.get('comet', 0) > 0)
-                avg_comet = avg_comet / comet_count if comet_count > 0 else 0.0
-                avg_bertscore = sum(e.get('bertscore_f1', 0) for e in eval_results) / len(eval_results)
-                avg_bleurt = sum(e.get('bleurt', 0) for e in eval_results if e.get('bleurt', 0) > 0)
-                bleurt_count = sum(1 for e in eval_results if e.get('bleurt', 0) > 0)
-                avg_bleurt = avg_bleurt / bleurt_count if bleurt_count > 0 else 0.0
-                avg_chrf = sum(e.get('chrf', 0) for e in eval_results) / len(eval_results)
-                avg_final = sum(e.get('final_score', 0) for e in eval_results) / len(eval_results)
+            # 计算每种语言的平均分
+            lang_averages = []
+            for test_lang in TEST_LANGS:
+                lang_name = LANG_NAMES.get(test_lang, test_lang)
+                lang_result_list = lang_results.get(test_lang, [])
+                eval_results = [r["evaluation"] for r in lang_result_list if r.get("evaluation")]
                 
-                # MQM平均值
-                mqm_results = [r.get("mqm_score") for r in results if r.get("mqm_score")]
-                avg_mqm_adequacy = sum(m.get('adequacy', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
-                avg_mqm_fluency = sum(m.get('fluency', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
-                avg_mqm_overall = sum(m.get('overall', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
-                avg_mqm_terminology = sum(m.get('terminology', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                if eval_results:
+                    # 计算各指标平均值
+                    avg_bleu = sum(e.get('bleu', 0) for e in eval_results) / len(eval_results)
+                    avg_comet = sum(e.get('comet', 0) for e in eval_results if e.get('comet', 0) > 0)
+                    comet_count = sum(1 for e in eval_results if e.get('comet', 0) > 0)
+                    avg_comet = avg_comet / comet_count if comet_count > 0 else 0.0
+                    avg_bertscore = sum(e.get('bertscore_f1', 0) for e in eval_results) / len(eval_results)
+                    avg_bleurt = sum(e.get('bleurt', 0) for e in eval_results if e.get('bleurt', 0) > 0)
+                    bleurt_count = sum(1 for e in eval_results if e.get('bleurt', 0) > 0)
+                    avg_bleurt = avg_bleurt / bleurt_count if bleurt_count > 0 else 0.0
+                    avg_chrf = sum(e.get('chrf', 0) for e in eval_results) / len(eval_results)
+                    avg_final = sum(e.get('final_score', 0) for e in eval_results) / len(eval_results)
+                    
+                    # MQM平均值
+                    mqm_results = [r.get("mqm_score") for r in lang_result_list if r.get("mqm_score")]
+                    avg_mqm_adequacy = sum(m.get('adequacy', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                    avg_mqm_fluency = sum(m.get('fluency', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                    avg_mqm_overall = sum(m.get('overall', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                    avg_mqm_terminology = sum(m.get('terminology', 0) for m in mqm_results) / len(mqm_results) if mqm_results else 0.0
+                    
+                    # 保存语言平均值
+                    lang_averages.append({
+                        'lang_name': lang_name,
+                        'bleu': avg_bleu,
+                        'comet': avg_comet,
+                        'bertscore': avg_bertscore,
+                        'bleurt': avg_bleurt,
+                        'chrf': avg_chrf,
+                        'final': avg_final,
+                        'mqm_adequacy': avg_mqm_adequacy,
+                        'mqm_fluency': avg_mqm_fluency,
+                        'mqm_overall': avg_mqm_overall,
+                        'mqm_terminology': avg_mqm_terminology
+                    })
+                    
+                    # 写入表格行
+                    f.write(f"| {lang_name} | Chinese | {avg_bleu:.4f} | {avg_comet:.4f} | {avg_bertscore:.4f} | {avg_bleurt:.4f} | {avg_chrf:.4f} | {avg_final:.4f} | {avg_mqm_adequacy:.4f} | {avg_mqm_fluency:.4f} | {avg_mqm_overall:.4f} | {avg_mqm_terminology:.4f} |\n")
+            
+            # 计算总体平均值
+            if lang_averages:
+                total_avg_bleu = sum(l['bleu'] for l in lang_averages) / len(lang_averages)
+                total_avg_comet = sum(l['comet'] for l in lang_averages if l['comet'] > 0)
+                total_comet_count = sum(1 for l in lang_averages if l['comet'] > 0)
+                total_avg_comet = total_avg_comet / total_comet_count if total_comet_count > 0 else 0.0
+                total_avg_bertscore = sum(l['bertscore'] for l in lang_averages) / len(lang_averages)
+                total_avg_bleurt = sum(l['bleurt'] for l in lang_averages if l['bleurt'] > 0)
+                total_bleurt_count = sum(1 for l in lang_averages if l['bleurt'] > 0)
+                total_avg_bleurt = total_avg_bleurt / total_bleurt_count if total_bleurt_count > 0 else 0.0
+                total_avg_chrf = sum(l['chrf'] for l in lang_averages) / len(lang_averages)
+                total_avg_final = sum(l['final'] for l in lang_averages) / len(lang_averages)
+                total_avg_mqm_adequacy = sum(l['mqm_adequacy'] for l in lang_averages) / len(lang_averages)
+                total_avg_mqm_fluency = sum(l['mqm_fluency'] for l in lang_averages) / len(lang_averages)
+                total_avg_mqm_overall = sum(l['mqm_overall'] for l in lang_averages) / len(lang_averages)
+                total_avg_mqm_terminology = sum(l['mqm_terminology'] for l in lang_averages) / len(lang_averages)
                 
-                # 写入表格行
-                f.write(f"| {lang_name} | Chinese | {avg_bleu:.4f} | {avg_comet:.4f} | {avg_bertscore:.4f} | {avg_bleurt:.4f} | {avg_chrf:.4f} | {avg_final:.4f} | {avg_mqm_adequacy:.4f} | {avg_mqm_fluency:.4f} | {avg_mqm_overall:.4f} | {avg_mqm_terminology:.4f} |\n")
-                
-                # 如果有多个语言对，这里可以添加汇总行
-                # 目前只有一种语言，所以汇总行就是当前行的值
-                f.write(f"| **汇总** | **平均值** | **{avg_bleu:.4f}** | **{avg_comet:.4f}** | **{avg_bertscore:.4f}** | **{avg_bleurt:.4f}** | **{avg_chrf:.4f}** | **{avg_final:.4f}** | **{avg_mqm_adequacy:.4f}** | **{avg_mqm_fluency:.4f}** | **{avg_mqm_overall:.4f}** | **{avg_mqm_terminology:.4f}** |\n")
+                # 写入汇总行
+                f.write(f"| **汇总** | **平均值** | **{total_avg_bleu:.4f}** | **{total_avg_comet:.4f}** | **{total_avg_bertscore:.4f}** | **{total_avg_bleurt:.4f}** | **{total_avg_chrf:.4f}** | **{total_avg_final:.4f}** | **{total_avg_mqm_adequacy:.4f}** | **{total_avg_mqm_fluency:.4f}** | **{total_avg_mqm_overall:.4f}** | **{total_avg_mqm_terminology:.4f}** |\n")
             f.write("\n")
         
         f.write(f"## 详细结果\n\n")
