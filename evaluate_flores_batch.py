@@ -505,7 +505,33 @@ async def evaluate_batch(
         
         logger.info(f"[评估阶段] 样本 {sample_num}/{total}")
         logger.debug(f"[评估阶段] 样本 {sample_num} 翻译文本: {trans['translation']}")
-        logger.debug(f"[评估阶段] 样本 {sample_num} 参考文本: {references[trans['index']]}")
+        
+        # 检查索引是否在有效范围内，并获取参考文本
+        trans_index = trans["index"]
+        if trans_index >= len(references) or references[trans_index] is None:
+            error_msg = f"缺少参考文本: trans['index']={trans_index}, references长度={len(references)}"
+            logger.warning(f"[评估阶段] 样本 {sample_num} {error_msg}")
+            # 如果没有参考文本，使用空字符串（某些评估指标可能仍能工作）
+            reference_text = ""
+            if trans_index >= len(references):
+                logger.error(f"[评估阶段] 样本 {sample_num} 索引越界，跳过评估")
+                result_dict = {
+                    "index": trans_index,
+                    "evaluation": None,
+                    "error": error_msg,
+                    "evaluation_time": 0
+                }
+                results.append(result_dict)
+                
+                # 实时写入错误结果
+                if eval_writer:
+                    eval_writer.write_evaluation(result_dict)
+                
+                print(f"[ERROR] {error_msg}")
+                continue
+        else:
+            reference_text = references[trans_index]
+        logger.debug(f"[评估阶段] 样本 {sample_num} 参考文本: {reference_text}")
         print(f"\n[评估 {i+1}/{total}]")
         print(f"翻译: {trans['translation'][:100]}{'...' if len(trans['translation']) > 100 else ''}")
         
@@ -514,7 +540,7 @@ async def evaluate_batch(
             logger.debug(f"[评估阶段] 样本 {sample_num} 开始调用eval_service.evaluate()")
             eval_result = eval_service.evaluate(
                 translation=trans["translation"],
-                reference=references[trans["index"]],
+                reference=reference_text,
                 source=trans["source"],
                 mqm_score=trans.get("mqm_score")
             )
@@ -641,23 +667,57 @@ class EvaluationTempWriter:
     
     def _load_existing_evaluations(self) -> List[Dict]:
         """加载已有的评估结果（用于恢复）"""
-        if not self.temp_file.exists():
-            return []
-        
         existing = []
-        try:
-            with open(self.temp_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
+        
+        # 首先尝试加载新格式文件（evaluations_{lang_code}.jsonl）
+        if self.temp_file.exists():
+            try:
+                with open(self.temp_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            eval_data = json.loads(line)
+                            existing.append(eval_data)
+                        except json.JSONDecodeError:
+                            continue
+                logger.info(f"[恢复] 从新格式文件加载了 {len(existing)} 条评估结果")
+                return existing
+            except Exception as e:
+                logger.warning(f"[恢复] 加载新格式文件失败: {e}")
+        
+        # 如果新格式文件不存在，尝试查找旧格式文件（evaluations_{lang_code}_{timestamp}.jsonl）
+        import re
+        temp_dir = self.temp_file.parent
+        if temp_dir.exists():
+            # 查找所有匹配的旧格式文件
+            pattern = re.compile(rf'evaluations_{re.escape(self.lang_code)}_\d{{8}}_\d{{6}}\.jsonl')
+            for file in temp_dir.glob(f"evaluations_{self.lang_code}_*.jsonl"):
+                if pattern.match(file.name):
+                    logger.info(f"[恢复] 发现旧格式评估文件: {file.name}")
                     try:
-                        eval_data = json.loads(line)
-                        existing.append(eval_data)
-                    except json.JSONDecodeError:
-                        continue
-        except Exception as e:
-            logger.warning(f"[恢复] 加载已有评估结果失败: {e}")
+                        with open(file, 'r', encoding='utf-8') as f:
+                            for line in f:
+                                line = line.strip()
+                                if not line:
+                                    continue
+                                try:
+                                    eval_data = json.loads(line)
+                                    existing.append(eval_data)
+                                except json.JSONDecodeError:
+                                    continue
+                        logger.info(f"[恢复] 从旧格式文件加载了 {len(existing)} 条评估结果")
+                        # 如果找到旧格式文件，将其重命名为新格式（避免下次再查找）
+                        if existing:
+                            try:
+                                file.rename(self.temp_file)
+                                logger.info(f"[恢复] 已将旧格式文件重命名为新格式: {self.temp_file.name}")
+                            except Exception as e:
+                                logger.warning(f"[恢复] 重命名文件失败: {e}")
+                        return existing
+                    except Exception as e:
+                        logger.warning(f"[恢复] 加载旧格式文件失败: {e}")
         
         return existing
     
@@ -972,7 +1032,8 @@ def load_translations_temp(temp_file: Path) -> tuple:
 
 def generate_summary_report(
     all_results: Dict[str, Dict],
-    output_dir: Path
+    output_dir: Path,
+    eval_result_dir: Optional[Path] = None
 ):
     """
     生成汇总分析报告（包含所有语言对的对比分析）
@@ -987,10 +1048,19 @@ def generate_summary_report(
                     "metadata": {...}
                 }
             }
-        output_dir: 输出目录
+        output_dir: 输出目录（基础目录）
+        eval_result_dir: 评估结果子目录（如果为None，则保存到output_dir）
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    summary_path = output_dir / f"flores_summary_{timestamp}.md"
+    
+    # 确定保存目录
+    if eval_result_dir:
+        save_dir = eval_result_dir
+        save_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        save_dir = output_dir
+    
+    summary_path = save_dir / f"flores_summary_{timestamp}.md"
     
     logger.info(f"[汇总报告] 开始生成汇总分析报告...")
     print(f"\n[汇总报告] 生成汇总分析报告...")
@@ -1073,20 +1143,34 @@ def generate_summary_report(
             f.write(f"{mqm['overall']:.4f} | ")
             f.write(f"{mqm['terminology']:.4f} |\n")
         
-        # 计算总体平均值
+        # 计算总体平均值（使用加权平均，按各语言的样本数加权）
         if lang_stats:
-            total_bleu = sum(s["metrics"]["bleu"]["avg"] for s in lang_stats) / len(lang_stats)
-            total_comet = sum(s["metrics"]["comet"]["avg"] for s in lang_stats if s["metrics"]["comet"]["count"] > 0)
-            total_comet_count = sum(1 for s in lang_stats if s["metrics"]["comet"]["count"] > 0)
-            total_comet_avg = total_comet / total_comet_count if total_comet_count > 0 else 0.0
+            # 计算加权平均值：sum(平均值 * 样本数) / sum(样本数)
+            total_bleu_weighted = sum(s["metrics"]["bleu"]["avg"] * s["metrics"]["bleu"]["count"] for s in lang_stats)
+            total_bleu_count = sum(s["metrics"]["bleu"]["count"] for s in lang_stats)
+            total_bleu = total_bleu_weighted / total_bleu_count if total_bleu_count > 0 else 0.0
             
-            total_bertscore = sum(s["metrics"]["bertscore_f1"]["avg"] for s in lang_stats) / len(lang_stats)
-            total_bleurt = sum(s["metrics"]["bleurt"]["avg"] for s in lang_stats if s["metrics"]["bleurt"]["count"] > 0)
-            total_bleurt_count = sum(1 for s in lang_stats if s["metrics"]["bleurt"]["count"] > 0)
-            total_bleurt_avg = total_bleurt / total_bleurt_count if total_bleurt_count > 0 else 0.0
+            total_comet_weighted = sum(s["metrics"]["comet"]["avg"] * s["metrics"]["comet"]["count"] for s in lang_stats if s["metrics"]["comet"]["count"] > 0)
+            total_comet_count = sum(s["metrics"]["comet"]["count"] for s in lang_stats if s["metrics"]["comet"]["count"] > 0)
+            total_comet_avg = total_comet_weighted / total_comet_count if total_comet_count > 0 else 0.0
             
-            total_chrf = sum(s["metrics"]["chrf"]["avg"] for s in lang_stats) / len(lang_stats)
-            total_final = sum(s["metrics"]["final_score"]["avg"] for s in lang_stats) / len(lang_stats)
+            total_bertscore_weighted = sum(s["metrics"]["bertscore_f1"]["avg"] * s["metrics"]["bertscore_f1"]["count"] for s in lang_stats)
+            total_bertscore_count = sum(s["metrics"]["bertscore_f1"]["count"] for s in lang_stats)
+            total_bertscore = total_bertscore_weighted / total_bertscore_count if total_bertscore_count > 0 else 0.0
+            
+            total_bleurt_weighted = sum(s["metrics"]["bleurt"]["avg"] * s["metrics"]["bleurt"]["count"] for s in lang_stats if s["metrics"]["bleurt"]["count"] > 0)
+            total_bleurt_count = sum(s["metrics"]["bleurt"]["count"] for s in lang_stats if s["metrics"]["bleurt"]["count"] > 0)
+            total_bleurt_avg = total_bleurt_weighted / total_bleurt_count if total_bleurt_count > 0 else 0.0
+            
+            total_chrf_weighted = sum(s["metrics"]["chrf"]["avg"] * s["metrics"]["chrf"]["count"] for s in lang_stats)
+            total_chrf_count = sum(s["metrics"]["chrf"]["count"] for s in lang_stats)
+            total_chrf = total_chrf_weighted / total_chrf_count if total_chrf_count > 0 else 0.0
+            
+            total_final_weighted = sum(s["metrics"]["final_score"]["avg"] * s["metrics"]["final_score"]["count"] for s in lang_stats)
+            total_final_count = sum(s["metrics"]["final_score"]["count"] for s in lang_stats)
+            total_final = total_final_weighted / total_final_count if total_final_count > 0 else 0.0
+            
+            # MQM评分使用简单平均（因为各语言的MQM评分可能相同）
             total_mqm_adeq = sum(s["mqm"]["adequacy"] for s in lang_stats) / len(lang_stats)
             total_mqm_flue = sum(s["mqm"]["fluency"] for s in lang_stats) / len(lang_stats)
             total_mqm_over = sum(s["mqm"]["overall"] for s in lang_stats) / len(lang_stats)
@@ -1152,13 +1236,32 @@ def save_results(
     translations: List[Dict],
     evaluations: List[Dict],
     output_dir: Path,
-    metadata: Optional[Dict] = None
+    metadata: Optional[Dict] = None,
+    eval_result_dir: Optional[Path] = None
 ):
-    """保存最终结果（阶段2：评估完成后保存）"""
+    """
+    保存最终结果（阶段2：评估完成后保存）
+    
+    Args:
+        lang_code: 语言代码
+        translations: 翻译结果列表
+        evaluations: 评估结果列表
+        output_dir: 输出目录（基础目录）
+        metadata: 元数据
+        eval_result_dir: 评估结果子目录（如果为None，则保存到output_dir）
+    """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     lang_name = LANG_NAMES.get(lang_code, lang_code)
     
+    # 确定保存目录
+    if eval_result_dir:
+        save_dir = eval_result_dir
+        save_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        save_dir = output_dir
+    
     logger.info(f"[保存最终结果] 开始保存 {lang_name} 的最终结果...")
+    logger.info(f"[保存最终结果] 保存目录: {save_dir}")
     
     # 合并结果
     combined_results = []
@@ -1174,7 +1277,7 @@ def save_results(
         })
     
     # 保存JSON
-    json_path = output_dir / f"flores_{lang_code}_{timestamp}.json"
+    json_path = save_dir / f"flores_{lang_code}_{timestamp}.json"
     logger.debug(f"[保存结果] 保存JSON文件: {json_path}")
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump({
@@ -1187,7 +1290,7 @@ def save_results(
     logger.info(f"[保存结果] JSON文件已保存: {json_path}")
     
     # 保存Markdown报告
-    md_path = output_dir / f"flores_{lang_code}_{timestamp}.md"
+    md_path = save_dir / f"flores_{lang_code}_{timestamp}.md"
     logger.debug(f"[保存结果] 保存Markdown报告: {md_path}")
     with open(md_path, 'w', encoding='utf-8') as f:
         f.write(f"# FLORES数据集评估报告 - {lang_name}到中文\n\n")
@@ -1588,6 +1691,13 @@ async def main():
         evaluation_start_time = datetime.now()
         all_evaluation_results = {}  # 保存所有语言的结果，用于生成汇总报告
         
+        # 创建评估结果子目录（格式：eval_result_YYYYMMDDHHMMSS）
+        eval_result_timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        eval_result_dir = output_dir / "evaluation_results" / f"eval_result_{eval_result_timestamp}"
+        eval_result_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"[评估结果] 创建评估结果目录: {eval_result_dir}")
+        print(f"[评估结果] 评估结果将保存到: {eval_result_dir}")
+        
         # 确定要评估的语言列表
         if EVAL_ONLY:
             # 仅评估模式：使用找到的文件对应的语言
@@ -1665,7 +1775,7 @@ async def main():
                 # 保存最终结果
                 logger.info(f"[{lang_name}] 保存最终结果...")
                 print(f"\n保存最终结果...")
-                save_results(lang_code, translations, sorted_evaluations, output_dir, metadata)
+                save_results(lang_code, translations, sorted_evaluations, output_dir, metadata, eval_result_dir)
                 
                 # 保存到汇总结果中
                 all_evaluation_results[lang_code] = {
@@ -1703,7 +1813,7 @@ async def main():
             print("[汇总报告] 生成汇总分析报告...")
             print(f"{'='*80}")
             try:
-                summary_path = generate_summary_report(all_evaluation_results, output_dir)
+                summary_path = generate_summary_report(all_evaluation_results, output_dir, eval_result_dir)
                 logger.info(f"[汇总报告] 汇总分析报告生成完成: {summary_path}")
                 print(f"[OK] 汇总分析报告已生成: {summary_path}")
             except Exception as e:

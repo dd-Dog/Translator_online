@@ -244,42 +244,167 @@ python test_evaluator_env.py
 
 详细配置说明请参考: `docs/评估器环境配置指南.md`
 
-### FLORES数据集批量评估
+### FLORES数据集批量翻译和评估
 
-使用 `evaluate_flores_batch.py` 进行批量翻译和评估：
+`evaluate_flores_batch.py` 是用于在FLORES数据集上进行批量翻译和评估的核心脚本，支持多种语言到中文的翻译测试。
+
+#### 准备工作
+
+1. **下载FLORES数据集**:
+   - 数据集应位于 `datasets/flores200_dataset/` 目录
+   - 包含 `dev/` 和 `devtest/` 子目录
+
+2. **启动评估API服务**（推荐）:
+   ```bash
+   # 在评估环境中
+   conda activate translator_eval
+   python eval_server.py
+   ```
+
+3. **配置API密钥**:
+   - 确保 `.env` 文件中包含所有必需的API密钥
+   - 参考 `config/models.yaml` 中的配置
+
+#### 使用方法
+
+**1. 完整流程（翻译+评估）**:
 
 ```bash
-# 完整流程（翻译+评估）
+# 使用默认配置（5种语言，每种50条样本）
 python evaluate_flores_batch.py
 
-# 仅评估已有翻译结果
-python evaluate_flores_batch.py --eval-only results/flores_evaluation/translations_temp/
+# 指定语言和样本数
+python evaluate_flores_batch.py --languages en de vi --max-samples 20 --batch-size 10
+
+# 使用devtest数据集
+python evaluate_flores_batch.py --dataset-type devtest
 ```
 
-**输出目录结构**:
+**2. 仅评估已有翻译结果**:
+
+```bash
+# 评估指定目录下的所有翻译文件（自动查找时间戳子目录）
+python evaluate_flores_batch.py --eval-only results/flores_evaluation/translations_temp/
+
+# 评估指定的翻译文件
+python evaluate_flores_batch.py --eval-only results/flores_evaluation/translations_temp/temp_202512121347/translations_en.jsonl
+
+# 评估多个文件
+python evaluate_flores_batch.py --eval-only file1.jsonl file2.jsonl file3.jsonl
+```
+
+**命令行参数**:
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--languages` | 要测试的语言代码列表（用空格分隔） | `en de vi km ms` |
+| `--max-samples` | 每种语言的最大样本数 | `50` |
+| `--batch-size` | 每批翻译的样本数 | `10` |
+| `--dataset-type` | 数据集类型（`dev` 或 `devtest`） | `dev` |
+| `--eval-only` | 仅评估模式，指定翻译结果文件或目录 | `None` |
+
+**支持的语言代码**:
+- `en`: 英语
+- `de`: 德语
+- `vi`: 越南语
+- `km`: 柬埔寨语
+- `ms`: 马来语
+
+#### 输出结果
+
+**目录结构**:
+
+每次运行会生成一个统一的时间戳子目录（格式：`temp_YYYYMMDDHHMMSS`），所有临时文件和最终结果都保存在该目录下：
+
 ```
 results/flores_evaluation/
 ├── translations_temp/
-│   └── temp_202512121347/          # 每次运行生成一个时间戳子目录
-│       ├── translations_en.jsonl   # 各语言的翻译结果
+│   └── temp_202512121347/          # 本次运行的时间戳目录
+│       ├── translations_en.jsonl   # 英语翻译结果（实时保存）
 │       ├── translations_en.meta.json
-│       ├── translations_de.jsonl
-│       └── ...
+│       ├── translations_de.jsonl   # 德语翻译结果
+│       ├── translations_de.meta.json
+│       └── ...                      # 其他语言
 ├── evaluations_temp/
-│   └── temp_202512121347/          # 对应的时间戳子目录
-│       ├── evaluations_en.jsonl    # 各语言的评估结果
+│   └── temp_202512121347/          # 对应的时间戳目录
+│       ├── evaluations_en.jsonl    # 英语评估结果（实时保存）
 │       ├── evaluations_en.meta.json
-│       └── ...
-├── flores_en_202512121347.json     # 最终结果（JSON）
-├── flores_en_202512121347.md       # 最终结果（Markdown报告）
-└── flores_summary_202512121347.md  # 汇总报告
+│       ├── evaluations_de.jsonl    # 德语评估结果
+│       └── ...                      # 其他语言
+└── evaluation_results/
+    └── eval_result_202512121347/   # 最终结果目录
+        ├── flores_en_202512121347.json     # 最终结果（JSON格式）
+        ├── flores_en_202512121347.md       # 最终结果（Markdown报告）
+        ├── flores_de_202512121347.json
+        ├── flores_de_202512121347.md
+        └── flores_summary_202512121347.md  # 汇总报告（所有语言）
 ```
 
-**特性**:
-- ✅ 实时保存：每句翻译/评估完成后立即写入文件
-- ✅ 中断恢复：支持从断点继续翻译或评估
-- ✅ 时间戳目录：每次运行生成独立的时间戳子目录，避免覆盖
-- ✅ 批量处理：支持批量翻译和评估，提高效率
+**输出文件说明**:
+
+1. **临时文件** (`.jsonl` 格式):
+   - `translations_{lang_code}.jsonl`: 实时保存的翻译结果，每行一个JSON对象
+   - `evaluations_{lang_code}.jsonl`: 实时保存的评估结果，每行一个JSON对象
+   - 支持中断恢复：如果程序中断，可以从这些文件继续
+
+2. **最终结果** (JSON格式):
+   - 包含完整的翻译和评估数据
+   - 每个样本包含：原文、翻译、参考译文、评估分数、MQM评分等
+
+3. **Markdown报告**:
+   - 各语言的详细报告：包含所有样本的翻译和评估结果
+   - 汇总报告：包含所有语言的评分汇总表、各指标详情、总体统计
+
+**汇总报告内容**:
+- 评分汇总表：BLEU、COMET、BERTScore F1、BLEURT、ChrF、综合评分、MQM子指标
+- 各语言详细统计：成功率、各指标详情、MQM评分
+- 总体统计：总样本数、成功评估数、总体成功率
+
+#### 核心特性
+
+- ✅ **实时保存**: 每句翻译/评估完成后立即写入文件，防止数据丢失
+- ✅ **中断恢复**: 支持从断点继续翻译或评估，无需重新开始
+- ✅ **时间戳目录**: 每次运行生成独立的时间戳子目录，避免覆盖之前的结果
+- ✅ **批量处理**: 支持批量翻译和评估，提高效率
+- ✅ **灵活配置**: 支持命令行参数，可自定义语言、样本数、批次大小等
+- ✅ **仅评估模式**: 支持对已有翻译结果进行评估，无需重新翻译
+
+#### 使用示例
+
+**示例1: 快速测试（少量样本）**:
+
+```bash
+# 测试英语和德语，每种语言10条样本
+python evaluate_flores_batch.py --languages en de --max-samples 10 --batch-size 5
+```
+
+**示例2: 完整评估（所有语言，50条样本）**:
+
+```bash
+# 使用默认配置，测试5种语言，每种50条样本
+python evaluate_flores_batch.py
+```
+
+**示例3: 重新评估已有翻译结果**:
+
+```bash
+# 如果翻译已完成，但评估失败或需要重新评估
+python evaluate_flores_batch.py --eval-only results/flores_evaluation/translations_temp/temp_202512121347/
+```
+
+**示例4: 使用devtest数据集**:
+
+```bash
+# 使用devtest数据集进行测试
+python evaluate_flores_batch.py --dataset-type devtest --max-samples 20
+```
+
+#### 注意事项
+
+1. **API限流**: 如果遇到API限流错误，可以减小 `--batch-size` 参数
+2. **评估服务**: 确保评估API服务已启动，否则评估阶段会跳过
+3. **数据集路径**: 确保FLORES数据集已正确下载到 `datasets/flores200_dataset/` 目录
+4. **磁盘空间**: 大量样本会产生较大的结果文件，确保有足够的磁盘空间
 
 详细使用说明请参考: `docs/FLORES批量评估使用指南.md`
 
