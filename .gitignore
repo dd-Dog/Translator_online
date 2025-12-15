@@ -65,6 +65,6 @@ reports/*.md
 !reports/.gitkeep
 
 # 数据集和结果文件
-datasets/
+# datasets/  # 已启用，允许推送数据集
 results/
 
