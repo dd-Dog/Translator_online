@@ -5,6 +5,15 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, Dict
 
 
+class ModelConfig(BaseModel):
+    """模型配置"""
+    model_type: str = Field(..., description="模型类型（如deepseek, qwen, doubao等）")
+    api_key: str = Field(..., min_length=1, description="API密钥")
+    
+    class Config:
+        extra = "allow"  # 允许额外字段
+
+
 class TranslateRequest(BaseModel):
     """翻译请求"""
     text: str = Field(..., min_length=1, max_length=10000, description="待翻译文本")
@@ -13,6 +22,11 @@ class TranslateRequest(BaseModel):
     style: str = Field(default="general", description="翻译风格")
     glossary: Dict[str, str] = Field(default_factory=dict, description="术语表")
     stream: bool = Field(default=False, description="是否流式返回进度")
+    # 每个阶段的模型配置（可选，如果不提供则使用默认配置）
+    model_configs: Optional[Dict[str, ModelConfig]] = Field(
+        default=None,
+        description="各阶段的模型配置，格式：{'planner': {'model_type': 'deepseek', 'api_key': 'xxx'}, ...}"
+    )
     
     @validator('text')
     def validate_text(cls, v):

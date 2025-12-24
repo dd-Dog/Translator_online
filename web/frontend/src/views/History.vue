@@ -34,7 +34,8 @@
       </el-form>
       
       <!-- 历史记录列表 -->
-      <el-table :data="historyItems" style="width: 100%">
+      <div class="table-container">
+        <el-table :data="historyItems" style="width: 100%">
         <el-table-column prop="created_at" label="时间" width="180">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
@@ -58,16 +59,15 @@
             <el-button size="small" type="danger" @click="handleDelete(row.task_id)">删除</el-button>
           </template>
         </el-table-column>
-      </el-table>
+        </el-table>
+      </div>
       
       <!-- 分页 -->
       <el-pagination
         v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
+        :page-size="pagination.pageSize"
         :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="loadHistory"
+        layout="total, prev, pager, next, jumper"
         @current-change="loadHistory"
         style="margin-top: 20px; justify-content: center;"
       />
@@ -235,7 +235,7 @@ const filters = ref({
 })
 const pagination = ref({
   page: 1,
-  pageSize: 20,
+  pageSize: 15,
   total: 0
 })
 
@@ -475,6 +475,12 @@ const formatExtraInfo = (value) => {
 
 .filter-form {
   margin-bottom: 20px;
+}
+
+.table-container {
+  max-height: calc(100vh - 350px);
+  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .detail-content {

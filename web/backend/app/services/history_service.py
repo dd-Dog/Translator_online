@@ -59,7 +59,7 @@ class HistoryService:
             print(traceback.format_exc())
             raise
     
-    async def load(self, page: int = 1, page_size: int = 20,
+    async def load(self, page: int = 1, page_size: int = 15,
                    source_lang: Optional[str] = None,
                    style: Optional[str] = None) -> List[dict]:
         """加载历史记录"""

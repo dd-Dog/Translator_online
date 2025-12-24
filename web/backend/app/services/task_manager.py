@@ -90,9 +90,85 @@ class TaskManager:
                 }
             )
             
-            # 获取Pipeline
+            # 获取Pipeline - 如果请求中提供了model_configs，使用它们创建Pipeline
+            # 注意：每次任务都创建新的Pipeline实例，确保不同客户端的API_KEY不会混用
             logger.info("[步骤0] 初始化翻译Pipeline...")
-            pipeline = get_or_create_pipeline()
+            pipeline_configs = None
+            if task.request.model_configs and len(task.request.model_configs) > 0:
+                # 转换前端传入的配置格式
+                # Pydantic会将ModelConfig对象转换为字典，但我们需要处理两种情况：
+                # 1. 已经是字典格式
+                # 2. 是ModelConfig对象（有dict()方法或可以直接访问属性）
+                pipeline_configs = {}
+                for stage, config in task.request.model_configs.items():
+                    # 如果是ModelConfig对象，转换为字典
+                    if hasattr(config, 'dict'):
+                        config_dict = config.dict()
+                    elif hasattr(config, 'model_dump'):  # Pydantic v2
+                        config_dict = config.model_dump()
+                    elif isinstance(config, dict):
+                        config_dict = config
+                    else:
+                        # 尝试直接访问属性（Pydantic模型对象）
+                        config_dict = {
+                            'model_type': getattr(config, 'model_type', 'deepseek'),
+                            'api_key': getattr(config, 'api_key', '')
+                        }
+                    
+                    # 获取API_KEY（保留原始值，包括空字符串，用于强制使用用户配置）
+                    api_key = str(config_dict.get('api_key', '')).strip()
+                    model_type = config_dict.get('model_type', 'deepseek')
+                    
+                    # 记录配置信息
+                    logger.info(f"[配置验证] 阶段 {stage}: model_type={model_type}, api_key长度={len(api_key)}, api_key前8位={api_key[:8] if len(api_key) >= 8 else 'N/A'}")
+                    
+                    # 如果API_KEY为空，抛出错误（不允许空值）
+                    if not api_key:
+                        raise ValueError(f"阶段 {stage} 的API_KEY不能为空")
+                    
+                    pipeline_configs[stage] = {
+                        'model_type': model_type,
+                        'api_key': api_key  # 使用用户提供的API_KEY，即使是错误的也要使用
+                    }
+                
+                # 同时保存配置信息到pipeline_configs中，用于后续验证
+                # 注意：这里保存的是用户传入的配置，用于后续对比验证
+                
+                # 详细记录Pipeline配置（用于确认配置生效）
+                logger.info("=" * 80)
+                logger.info(f"[Pipeline配置] 任务ID: {task_id}")
+                logger.info(f"[Pipeline配置] 使用自定义模型配置，各阶段配置如下：")
+                stage_names = {
+                    'planner': '任务规划',
+                    'translator_a': '主翻译',
+                    'translator_b': '对照翻译',
+                    'checker': '质量检查',
+                    'stylist': '风格化',
+                    'aggregator': '最终整合'
+                }
+                for stage, config in pipeline_configs.items():
+                    model_type = config.get('model_type', '未知')
+                    api_key_preview = config.get('api_key', '')[:8] + '...' if len(config.get('api_key', '')) > 8 else config.get('api_key', '')
+                    logger.info(f"  [{stage_names.get(stage, stage)}] 模型类型: {model_type}, API_KEY: {api_key_preview}")
+                logger.info("=" * 80)
+                logger.info(f"[步骤0] 注意：每个任务使用独立的Pipeline实例，确保API_KEY隔离")
+            else:
+                logger.info("[步骤0] 使用默认模型配置（从yaml文件读取）")
+                # 记录默认配置
+                from app.dependencies import load_models_config
+                config = load_models_config()
+                workflow_config = config.get('workflow', {})
+                logger.info("=" * 80)
+                logger.info(f"[Pipeline配置] 任务ID: {task_id}")
+                logger.info(f"[Pipeline配置] 使用默认模型配置（从yaml文件读取），各阶段配置如下：")
+                for stage in ['planner', 'translator_a', 'translator_b', 'checker', 'stylist', 'aggregator']:
+                    stage_config = workflow_config.get(stage, 'deepseek')
+                    model_type = stage_config if isinstance(stage_config, str) else stage_config.get('model', 'deepseek')
+                    logger.info(f"  [{stage}] 模型类型: {model_type}")
+                logger.info("=" * 80)
+            
+            # 每次任务都创建新的Pipeline实例，确保不同客户端的API_KEY不会混用
+            pipeline = get_or_create_pipeline(pipeline_configs)
             logger.success("[步骤0] Pipeline初始化完成")
             
             # 执行翻译 - 手动执行各阶段以获取进度
@@ -133,6 +209,14 @@ class TaskManager:
             logger.info("-" * 80)
             logger.info("[步骤1] 开始任务规划 (Planner)...")
             logger.info(f"  输入文本长度: {len(task.request.text)} 字符")
+            # 打印实际使用的模型信息
+            if hasattr(pipeline, 'planner') and hasattr(pipeline.planner, 'model') and pipeline.planner.model:
+                planner_model = pipeline.planner.model
+                model_name = getattr(planner_model, 'model_name', '未知')
+                api_key = getattr(planner_model, 'api_key', '')
+                api_key_preview = api_key[:8] + '...' if len(api_key) > 8 else api_key
+                base_url = getattr(planner_model, 'base_url', '默认')
+                logger.info(f"  [实际调用模型] model_name: {model_name}, base_url: {base_url}, api_key: {api_key_preview}")
             task_plan = await pipeline.planner.plan(
                 task.request.text,
                 task.request.source_lang if task.request.source_lang != "auto" else None,
@@ -164,6 +248,15 @@ class TaskManager:
             await update_progress("planner", 20, f"开始处理 {total_tasks} 个段落...")
             
             # 保存阶段1（任务规划）的详细信息
+            # 获取planner使用的模型信息
+            planner_model_info = "planner"  # 默认值
+            if pipeline_configs and 'planner' in pipeline_configs:
+                planner_model_info = pipeline_configs['planner'].get('model_type', 'planner')
+            elif hasattr(pipeline, 'planner') and hasattr(pipeline.planner, 'model') and pipeline.planner.model:
+                planner_model_info = getattr(pipeline.planner.model, 'model_name', 'planner') if hasattr(pipeline.planner.model, 'model_name') else 'planner'
+            
+            logger.info(f"  Planner使用模型: {planner_model_info}")
+            
             all_stage_details.append({
                 "stage": "planner",
                 "stage_name": "任务规划",
@@ -174,8 +267,21 @@ class TaskManager:
                     "tasks_count": len(task_plan.tasks),
                     "tasks": [{"segment_id": t.get('segment_id'), "text": t.get('text', '')[:100]} for t in task_plan.tasks]
                 },
-                "model": "planner"  # Planner不使用外部模型
+                "model": planner_model_info
             })
+            
+            # 发送阶段1完成进度和结果（包含模型信息）
+            await ws_manager.send_to_all(
+                task_id,
+                "stage_result",
+                {
+                    "stage": "planner",
+                    "stage_name": "任务规划",
+                    "translated_text": f"检测到源语言: {task_plan.source_lang}, 目标语言: {task_plan.target_lang}, 任务数量: {len(task_plan.tasks)}",
+                    "model": planner_model_info,  # 添加模型信息
+                    "progress": 15
+                }
+            )
             
             for idx, task_item in enumerate(task_plan.tasks):
                 segment_id = task_item['segment_id']
@@ -187,6 +293,14 @@ class TaskManager:
                 logger.info(f"[步骤2] 开始主翻译 (Translator-A) [段落 {idx+1}/{total_tasks}]")
                 logger.info(f"  段落ID: {segment_id}")
                 logger.info(f"  原文: {segment_text}")
+                # 打印实际使用的模型信息
+                if hasattr(pipeline, 'translator_a') and hasattr(pipeline.translator_a, 'model') and pipeline.translator_a.model:
+                    translator_a_model = pipeline.translator_a.model
+                    model_name = getattr(translator_a_model, 'model_name', '未知')
+                    api_key = getattr(translator_a_model, 'api_key', '')
+                    api_key_preview = api_key[:8] + '...' if len(api_key) > 8 else api_key
+                    base_url = getattr(translator_a_model, 'base_url', '默认')
+                    logger.info(f"  [实际调用模型] model_name: {model_name}, base_url: {base_url}, api_key: {api_key_preview}")
                 await update_progress("translator_a", int(progress_base + 5), f"执行主翻译（{idx+1}/{total_tasks}）...")
                 draft_a = await pipeline.translator_a.translate(
                     segment_text,
@@ -243,6 +357,7 @@ class TaskManager:
                         "stage": "translator_a",
                         "stage_name": "主翻译",
                         "translated_text": draft_a.translated_text,
+                        "model": model_name_a,  # 添加模型信息
                         "progress": int(progress_base + 10)
                     }
                 )
@@ -250,6 +365,14 @@ class TaskManager:
                 # 阶段3: 对照翻译
                 logger.info("-" * 80)
                 logger.info(f"[步骤3] 开始对照翻译 (Translator-B) [段落 {idx+1}/{total_tasks}]")
+                # 打印实际使用的模型信息
+                if hasattr(pipeline, 'translator_b') and hasattr(pipeline.translator_b, 'model') and pipeline.translator_b.model:
+                    translator_b_model = pipeline.translator_b.model
+                    model_name = getattr(translator_b_model, 'model_name', '未知')
+                    api_key = getattr(translator_b_model, 'api_key', '')
+                    api_key_preview = api_key[:8] + '...' if len(api_key) > 8 else api_key
+                    base_url = getattr(translator_b_model, 'base_url', '默认')
+                    logger.info(f"  [实际调用模型] model_name: {model_name}, base_url: {base_url}, api_key: {api_key_preview}")
                 await update_progress("translator_b", int(progress_base + 15), f"执行对照翻译（{idx+1}/{total_tasks}）...")
                 draft_b = await pipeline.translator_b.translate(
                     segment_text,
@@ -292,6 +415,7 @@ class TaskManager:
                         "stage": "translator_b",
                         "stage_name": "对照翻译",
                         "translated_text": draft_b.translated_text,
+                        "model": model_name_b,  # 添加模型信息
                         "progress": int(progress_base + 25)
                     }
                 )
@@ -300,6 +424,14 @@ class TaskManager:
                 logger.info("-" * 80)
                 logger.info(f"[步骤4] 开始质量检查 (Checker) [段落 {idx+1}/{total_tasks}]")
                 logger.info(f"  对比两个翻译版本...")
+                # 打印实际使用的模型信息
+                if hasattr(pipeline, 'checker') and hasattr(pipeline.checker, 'model') and pipeline.checker.model:
+                    checker_model = pipeline.checker.model
+                    model_name = getattr(checker_model, 'model_name', '未知')
+                    api_key = getattr(checker_model, 'api_key', '')
+                    api_key_preview = api_key[:8] + '...' if len(api_key) > 8 else api_key
+                    base_url = getattr(checker_model, 'base_url', '默认')
+                    logger.info(f"  [实际调用模型] model_name: {model_name}, base_url: {base_url}, api_key: {api_key_preview}")
                 await update_progress("checker", int(progress_base + 30), f"执行质量检查（{idx+1}/{total_tasks}）...")
                 checker_report = await pipeline.checker.check(
                     segment_text,
@@ -337,6 +469,11 @@ class TaskManager:
                 logger.info(f"  选择的最佳翻译（完整）:")
                 logger.info(f"    {best_draft.translated_text}")
                 
+                # 从pipeline.checker.model获取模型名称
+                checker_model_name = '未知'
+                if hasattr(pipeline, 'checker') and hasattr(pipeline.checker, 'model') and pipeline.checker.model:
+                    checker_model_name = getattr(pipeline.checker.model, 'model_name', '未知')
+                
                 # 保存阶段4的详细信息
                 checker_details = {
                     "stage": "checker",
@@ -348,7 +485,7 @@ class TaskManager:
                         "draft_b": draft_b.translated_text or ""
                     },
                     "output": best_draft.translated_text or "",
-                    "model": checker_report.model_name if hasattr(checker_report, 'model_name') else '未知',
+                    "model": checker_model_name,
                     "report": {
                         "consistent_segments": checker_report.consistent_segments if hasattr(checker_report, 'consistent_segments') else [],
                         "conflicting_segments_count": len(checker_report.conflicting_segments) if hasattr(checker_report, 'conflicting_segments') else 0,
@@ -375,6 +512,7 @@ class TaskManager:
                         "stage": "checker",
                         "stage_name": "质量检查",
                         "translated_text": best_draft.translated_text,
+                        "model": checker_model_name,  # 添加模型信息
                         "progress": int(progress_base + 40)
                     }
                 )
@@ -383,6 +521,14 @@ class TaskManager:
                 logger.info("-" * 80)
                 logger.info(f"[步骤5] 开始风格化 (Stylist) [段落 {idx+1}/{total_tasks}]")
                 logger.info(f"  目标风格: {task.request.style}")
+                # 打印实际使用的模型信息
+                if hasattr(pipeline, 'stylist') and hasattr(pipeline.stylist, 'model') and pipeline.stylist.model:
+                    stylist_model = pipeline.stylist.model
+                    model_name = getattr(stylist_model, 'model_name', '未知')
+                    api_key = getattr(stylist_model, 'api_key', '')
+                    api_key_preview = api_key[:8] + '...' if len(api_key) > 8 else api_key
+                    base_url = getattr(stylist_model, 'base_url', '默认')
+                    logger.info(f"  [实际调用模型] model_name: {model_name}, base_url: {base_url}, api_key: {api_key_preview}")
                 await update_progress("stylist", int(progress_base + 50), f"执行风格化（{idx+1}/{total_tasks}）...")
                 stylist_result = await pipeline.stylist.style(
                     best_draft.translated_text,
@@ -405,7 +551,10 @@ class TaskManager:
                         logger.info(f"    ... 还有 {len(stylist_result.style_changes) - 5} 个风格变更")
                 
                 # 保存阶段5的详细信息
-                stylist_model = stylist_result.model_name if hasattr(stylist_result, 'model_name') else '未知'
+                # 从pipeline.stylist.model获取模型名称
+                stylist_model = '未知'
+                if hasattr(pipeline, 'stylist') and hasattr(pipeline.stylist, 'model') and pipeline.stylist.model:
+                    stylist_model = getattr(pipeline.stylist.model, 'model_name', '未知')
                 all_stage_details.append({
                     "stage": "stylist",
                     "stage_name": "风格化",
@@ -431,6 +580,7 @@ class TaskManager:
                         "stage": "stylist",
                         "stage_name": "风格化",
                         "translated_text": stylist_result.styled_text,
+                        "model": stylist_model,  # 添加模型信息
                         "progress": int(progress_base + 60)
                     }
                 )
@@ -438,6 +588,14 @@ class TaskManager:
                 # 阶段6: 最终整合
                 logger.info("-" * 80)
                 logger.info(f"[步骤6] 开始最终整合 (Aggregator) [段落 {idx+1}/{total_tasks}]")
+                # 打印实际使用的模型信息
+                if hasattr(pipeline, 'aggregator') and hasattr(pipeline.aggregator, 'model') and pipeline.aggregator.model:
+                    aggregator_model = pipeline.aggregator.model
+                    model_name = getattr(aggregator_model, 'model_name', '未知')
+                    api_key = getattr(aggregator_model, 'api_key', '')
+                    api_key_preview = api_key[:8] + '...' if len(api_key) > 8 else api_key
+                    base_url = getattr(aggregator_model, 'base_url', '默认')
+                    logger.info(f"  [实际调用模型] model_name: {model_name}, base_url: {base_url}, api_key: {api_key_preview}")
                 await update_progress("aggregator", int(progress_base + 65), f"执行最终整合（{idx+1}/{total_tasks}）...")
                 final_result = await pipeline.aggregator.aggregate(
                     segment_text,
@@ -470,7 +628,10 @@ class TaskManager:
                         logger.info(f"      充分性: {qs.adequacy:.3f}, 流畅性: {qs.fluency:.3f}, 术语: {qs.terminology:.3f}, 总体: {qs.overall:.3f}")
                 
                 # 保存阶段6的详细信息
-                aggregator_model = final_result.model_name if hasattr(final_result, 'model_name') else '未知'
+                # 从pipeline.aggregator.model获取模型名称
+                aggregator_model = '未知'
+                if hasattr(pipeline, 'aggregator') and hasattr(pipeline.aggregator, 'model') and pipeline.aggregator.model:
+                    aggregator_model = getattr(pipeline.aggregator.model, 'model_name', '未知')
                 all_stage_details.append({
                     "stage": "aggregator",
                     "stage_name": "最终整合",
@@ -494,6 +655,7 @@ class TaskManager:
                         "stage": "aggregator",
                         "stage_name": "最终整合",
                         "translated_text": final_result.translated_text,
+                        "model": aggregator_model,  # 添加模型信息
                         "progress": int(progress_base + 80)
                     }
                 )
@@ -639,7 +801,7 @@ class TaskManager:
                 user_friendly_message = "API余额不足，请检查账户余额并充值后重试"
                 logger.error("⚠️  检测到API余额不足错误")
             elif '401' in error_str or 'Unauthorized' in error_str or 'Invalid API key' in error_str:
-                user_friendly_message = "API密钥无效，请检查.env文件中的API密钥配置"
+                user_friendly_message = "API密钥无效，请检查API密钥配置"
                 logger.error("⚠️  检测到API密钥错误")
             elif '429' in error_str or 'Rate limit' in error_str:
                 user_friendly_message = "请求频率过高，请稍后重试"

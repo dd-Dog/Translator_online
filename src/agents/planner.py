@@ -50,6 +50,15 @@ class TaskPlanner:
         
         response = await self.model.translate(request)
         
+        # 检查API调用是否失败
+        if response.error:
+            # API调用失败，不应该fallback，应该抛出错误
+            raise RuntimeError(f"Planner API调用失败: {response.error}")
+        
+        # 如果返回的文本为空，也视为失败
+        if not response.translated_text or not response.translated_text.strip():
+            raise RuntimeError("Planner API返回空结果，可能是API_KEY无效或API调用失败")
+        
         # 解析规划结果（这里简化处理，实际应该解析JSON）
         plan = self._parse_plan_response(response.translated_text, text, source_lang, target_lang)
         

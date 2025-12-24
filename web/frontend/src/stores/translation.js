@@ -30,13 +30,31 @@ export const useTranslationStore = defineStore('translation', {
         this.addLog('info', '系统', '开始翻译任务...')
         
         // 创建翻译任务
+        // 确保model_configs格式正确
+        let modelConfigsToSend = null
+        if (options.modelConfigs && Object.keys(options.modelConfigs).length > 0) {
+          modelConfigsToSend = {}
+          // 转换格式，确保每个配置都有model_type和api_key
+          Object.keys(options.modelConfigs).forEach(stage => {
+            const config = options.modelConfigs[stage]
+            if (config && config.model_type && config.api_key) {
+              modelConfigsToSend[stage] = {
+                model_type: config.model_type,
+                api_key: config.api_key
+              }
+            }
+          })
+          console.log('[前端调试] 发送的model_configs:', modelConfigsToSend)
+        }
+        
         const response = await translateAPI.createTask({
           text,
           source_lang: options.sourceLang || 'auto',
           target_lang: options.targetLang || 'zh',
           style: options.style || 'general',
           glossary: options.glossary || {},
-          stream: true
+          stream: true,
+          model_configs: modelConfigsToSend  // 传递模型配置
         })
         
         this.currentTask = response.task_id
@@ -91,6 +109,7 @@ export const useTranslationStore = defineStore('translation', {
           const { data: stageData } = data
           const stage = stageData.stage
           const translatedText = stageData.translated_text
+          const model = stageData.model || '未知'  // 获取模型信息
           
           // 保存阶段结果
           this.stageResults[stage] = translatedText
@@ -98,8 +117,8 @@ export const useTranslationStore = defineStore('translation', {
           // 更新进度
           this.progress = stageData.progress || this.progress
           
-          // 添加成功日志
-          this.addLog('success', stageData.stage_name || stage, '完成', translatedText)
+          // 添加成功日志（包含模型信息）
+          this.addLog('success', stageData.stage_name || stage, '完成', translatedText, model)
         })
         
         this.wsClient.on('completed', async (data) => {
@@ -132,7 +151,7 @@ export const useTranslationStore = defineStore('translation', {
       }
     },
     
-    addLog(type, stage, message, translatedText = null) {
+    addLog(type, stage, message, translatedText = null, model = null) {
       const now = new Date()
       const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
       this.translationLogs.push({
@@ -140,7 +159,8 @@ export const useTranslationStore = defineStore('translation', {
         stage,
         message,
         time,
-        translatedText // 添加翻译结果
+        translatedText, // 添加翻译结果
+        model // 添加模型信息
       })
     },
     

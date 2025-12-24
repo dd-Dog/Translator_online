@@ -19,7 +19,29 @@
         <div class="stage-box" :class="{ active: currentStage === 'planner' }">
           <div class="stage-number">1</div>
           <div class="stage-title">Task Planner</div>
-          <div class="stage-model">{{ getModelName('planner') }}</div>
+          <div class="stage-config">
+            <el-select 
+              v-model="modelConfigs.planner.model_type" 
+              size="small" 
+              style="width: 100%; margin-bottom: 5px;"
+              @change="onModelChange('planner')"
+            >
+              <el-option label="DeepSeek" value="deepseek" />
+              <el-option label="Qwen" value="qwen" />
+              <el-option label="豆包" value="doubao" />
+              <el-option label="OpenAI" value="openai" />
+              <el-option label="Gemini" value="gemini" />
+            </el-select>
+            <el-input
+              v-model="modelConfigs.planner.api_key"
+              type="password"
+              size="small"
+              placeholder="API Key"
+              show-password
+              style="width: 100%;"
+              @change="onApiKeyChange('planner')"
+            />
+          </div>
           <div class="stage-desc">语言检测、任务拆分</div>
         </div>
         
@@ -30,13 +52,57 @@
           <div class="stage-box" :class="{ active: currentStage === 'translator_a' }">
             <div class="stage-number">2</div>
             <div class="stage-title">Translator-A</div>
-            <div class="stage-model">{{ getModelName('translator_a') }}</div>
+            <div class="stage-config">
+              <el-select 
+                v-model="modelConfigs.translator_a.model_type" 
+                size="small" 
+                style="width: 100%; margin-bottom: 5px;"
+                @change="onModelChange('translator_a')"
+              >
+                <el-option label="DeepSeek" value="deepseek" />
+                <el-option label="Qwen" value="qwen" />
+                <el-option label="豆包" value="doubao" />
+                <el-option label="OpenAI" value="openai" />
+                <el-option label="Gemini" value="gemini" />
+              </el-select>
+              <el-input
+                v-model="modelConfigs.translator_a.api_key"
+                type="password"
+                size="small"
+                placeholder="API Key"
+                show-password
+                style="width: 100%;"
+                @change="onApiKeyChange('translator_a')"
+              />
+            </div>
             <div class="stage-desc">主翻译</div>
           </div>
           <div class="stage-box" :class="{ active: currentStage === 'translator_b' }">
             <div class="stage-number">3</div>
             <div class="stage-title">Translator-B</div>
-            <div class="stage-model">{{ getModelName('translator_b') }}</div>
+            <div class="stage-config">
+              <el-select 
+                v-model="modelConfigs.translator_b.model_type" 
+                size="small" 
+                style="width: 100%; margin-bottom: 5px;"
+                @change="onModelChange('translator_b')"
+              >
+                <el-option label="DeepSeek" value="deepseek" />
+                <el-option label="Qwen" value="qwen" />
+                <el-option label="豆包" value="doubao" />
+                <el-option label="OpenAI" value="openai" />
+                <el-option label="Gemini" value="gemini" />
+              </el-select>
+              <el-input
+                v-model="modelConfigs.translator_b.api_key"
+                type="password"
+                size="small"
+                placeholder="API Key"
+                show-password
+                style="width: 100%;"
+                @change="onApiKeyChange('translator_b')"
+              />
+            </div>
             <div class="stage-desc">对照翻译</div>
           </div>
         </div>
@@ -47,7 +113,29 @@
         <div class="stage-box" :class="{ active: currentStage === 'checker' }">
           <div class="stage-number">4</div>
           <div class="stage-title">Checker</div>
-          <div class="stage-model">{{ getModelName('checker') }}</div>
+          <div class="stage-config">
+            <el-select 
+              v-model="modelConfigs.checker.model_type" 
+              size="small" 
+              style="width: 100%; margin-bottom: 5px;"
+              @change="onModelChange('checker')"
+            >
+              <el-option label="DeepSeek" value="deepseek" />
+              <el-option label="Qwen" value="qwen" />
+              <el-option label="豆包" value="doubao" />
+              <el-option label="OpenAI" value="openai" />
+              <el-option label="Gemini" value="gemini" />
+            </el-select>
+            <el-input
+              v-model="modelConfigs.checker.api_key"
+              type="password"
+              size="small"
+              placeholder="API Key"
+              show-password
+              style="width: 100%;"
+              @change="onApiKeyChange('checker')"
+            />
+          </div>
           <div class="stage-desc">一致性检查、MQM评分</div>
         </div>
         
@@ -57,7 +145,29 @@
         <div class="stage-box" :class="{ active: currentStage === 'stylist' }">
           <div class="stage-number">5</div>
           <div class="stage-title">Stylist</div>
-          <div class="stage-model">{{ getModelName('stylist') }}</div>
+          <div class="stage-config">
+            <el-select 
+              v-model="modelConfigs.stylist.model_type" 
+              size="small" 
+              style="width: 100%; margin-bottom: 5px;"
+              @change="onModelChange('stylist')"
+            >
+              <el-option label="DeepSeek" value="deepseek" />
+              <el-option label="Qwen" value="qwen" />
+              <el-option label="豆包" value="doubao" />
+              <el-option label="OpenAI" value="openai" />
+              <el-option label="Gemini" value="gemini" />
+            </el-select>
+            <el-input
+              v-model="modelConfigs.stylist.api_key"
+              type="password"
+              size="small"
+              placeholder="API Key"
+              show-password
+              style="width: 100%;"
+              @change="onApiKeyChange('stylist')"
+            />
+          </div>
           <div class="stage-desc">术语统一、风格统一</div>
         </div>
         
@@ -67,7 +177,29 @@
         <div class="stage-box" :class="{ active: currentStage === 'aggregator' }">
           <div class="stage-number">6</div>
           <div class="stage-title">Aggregator</div>
-          <div class="stage-model">{{ getModelName('aggregator') }}</div>
+          <div class="stage-config">
+            <el-select 
+              v-model="modelConfigs.aggregator.model_type" 
+              size="small" 
+              style="width: 100%; margin-bottom: 5px;"
+              @change="onModelChange('aggregator')"
+            >
+              <el-option label="DeepSeek" value="deepseek" />
+              <el-option label="Qwen" value="qwen" />
+              <el-option label="豆包" value="doubao" />
+              <el-option label="OpenAI" value="openai" />
+              <el-option label="Gemini" value="gemini" />
+            </el-select>
+            <el-input
+              v-model="modelConfigs.aggregator.api_key"
+              type="password"
+              size="small"
+              placeholder="API Key"
+              show-password
+              style="width: 100%;"
+              @change="onApiKeyChange('aggregator')"
+            />
+          </div>
           <div class="stage-desc">最终整合、生成报告</div>
         </div>
         
@@ -83,6 +215,9 @@
 </template>
 
 <script setup>
+import { ref, watch, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+
 const props = defineProps({
   currentStage: {
     type: String,
@@ -94,20 +229,93 @@ const props = defineProps({
   }
 })
 
-const getModelName = (agent) => {
-  const model = props.modelConfig[agent]
-  if (model) {
-    // 简化模型名称显示
-    const modelLower = model.toLowerCase()
-    if (modelLower.includes('deepseek')) return 'DeepSeek'
-    if (modelLower.includes('qwen')) return 'Qwen'
-    if (modelLower.includes('gpt')) return 'GPT'
-    if (modelLower.includes('claude')) return 'Claude'
-    if (modelLower.includes('gemini')) return 'Gemini'
-    return model.split('/').pop() || model
-  }
-  return '未配置'
+const emit = defineEmits(['update:modelConfigs'])
+
+// localStorage 的 key
+const STORAGE_KEY = 'translation_model_configs'
+
+// 默认配置
+const defaultConfigs = {
+  planner: { model_type: 'deepseek', api_key: '' },
+  translator_a: { model_type: 'deepseek', api_key: '' },
+  translator_b: { model_type: 'qwen', api_key: '' },
+  checker: { model_type: 'deepseek', api_key: '' },
+  stylist: { model_type: 'qwen', api_key: '' },
+  aggregator: { model_type: 'deepseek', api_key: '' }
 }
+
+// 从 localStorage 加载配置
+const loadConfigsFromStorage = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // 合并保存的配置和默认配置，确保所有阶段都有配置
+      return {
+        ...defaultConfigs,
+        ...parsed
+      }
+    }
+  } catch (error) {
+    console.error('加载保存的配置失败:', error)
+    ElMessage.warning('加载保存的配置失败，使用默认配置')
+  }
+  return defaultConfigs
+}
+
+// 保存配置到 localStorage
+const saveConfigsToStorage = (configs) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(configs))
+    console.log('配置已保存到本地存储')
+  } catch (error) {
+    console.error('保存配置失败:', error)
+    ElMessage.error('保存配置失败')
+  }
+}
+
+// 模型配置，每个阶段都有model_type和api_key
+const modelConfigs = ref(loadConfigsFromStorage())
+
+// 监听配置变化，通知父组件并保存到本地
+const notifyAndSave = () => {
+  emit('update:modelConfigs', { ...modelConfigs.value })
+  saveConfigsToStorage(modelConfigs.value)
+}
+
+// 监听配置变化，通知父组件
+const onModelChange = (stage) => {
+  notifyAndSave()
+}
+
+const onApiKeyChange = (stage) => {
+  notifyAndSave()
+}
+
+// 监听props变化，更新本地配置（但不覆盖已保存的配置）
+watch(() => props.modelConfig, (newConfig) => {
+  if (newConfig && Object.keys(newConfig).length > 0) {
+    // 如果父组件传入了配置，更新本地配置（但保留已保存的API_KEY）
+    Object.keys(modelConfigs.value).forEach(stage => {
+      if (newConfig[stage]) {
+        // 只更新model_type，保留已有的api_key（如果已保存）
+        if (newConfig[stage].model_type) {
+          modelConfigs.value[stage].model_type = newConfig[stage].model_type
+        }
+        // 如果本地没有保存的api_key，才使用传入的
+        if (!modelConfigs.value[stage].api_key && newConfig[stage].api_key) {
+          modelConfigs.value[stage].api_key = newConfig[stage].api_key
+        }
+      }
+    })
+    notifyAndSave()
+  }
+}, { deep: true })
+
+onMounted(() => {
+  // 初始化时通知父组件
+  emit('update:modelConfigs', { ...modelConfigs.value })
+})
 </script>
 
 <style scoped>
@@ -117,6 +325,8 @@ const getModelName = (agent) => {
 
 .architecture-content {
   padding: 10px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
 }
 
 .workflow-diagram {
@@ -159,18 +369,17 @@ const getModelName = (agent) => {
   font-size: 14px;
   font-weight: bold;
   color: #303133;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 }
 
-.stage-model {
-  font-size: 12px;
-  color: #909399;
-  margin-bottom: 3px;
+.stage-config {
+  margin-bottom: 8px;
 }
 
 .stage-desc {
   font-size: 11px;
   color: #606266;
+  margin-top: 5px;
 }
 
 .parallel-box {
@@ -194,4 +403,3 @@ const getModelName = (agent) => {
   font-size: 16px;
 }
 </style>
-

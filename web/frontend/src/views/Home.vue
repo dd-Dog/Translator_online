@@ -6,6 +6,7 @@
         <ArchitecturePanel 
           :current-stage="translationStore.currentStage" 
           :model-config="modelConfig"
+          @update:modelConfigs="handleModelConfigsUpdate"
         />
       </el-col>
       
@@ -138,6 +139,7 @@ const form = ref({
 
 const styles = ref([])
 const modelConfig = ref({})
+const currentModelConfigs = ref({})  // 当前用户配置的模型和API_KEY
 
 onMounted(async () => {
   // 加载翻译风格
@@ -161,16 +163,34 @@ onUnmounted(() => {
   evaluationStore.reset()
 })
 
+const handleModelConfigsUpdate = (configs) => {
+  currentModelConfigs.value = configs
+}
+
 const handleTranslate = async () => {
   if (!form.value.text.trim()) {
     ElMessage.warning('请输入要翻译的文本')
     return
   }
   
+  // 检查是否所有阶段都配置了API_KEY
+  const missingKeys = []
+  Object.keys(currentModelConfigs.value).forEach(stage => {
+    if (!currentModelConfigs.value[stage].api_key) {
+      missingKeys.push(stage)
+    }
+  })
+  
+  if (missingKeys.length > 0) {
+    ElMessage.warning(`请为以下阶段配置API_KEY: ${missingKeys.join(', ')}`)
+    return
+  }
+  
   await translationStore.translate(form.value.text, {
     sourceLang: form.value.sourceLang,
     targetLang: form.value.targetLang,
-    style: form.value.style
+    style: form.value.style,
+    modelConfigs: currentModelConfigs.value
   })
 }
 

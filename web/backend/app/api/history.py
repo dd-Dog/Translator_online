@@ -20,7 +20,7 @@ limiter = Limiter(key_func=get_remote_address)
 async def get_history(
     request: Request,
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(15, ge=1, le=100),
     source_lang: str = Query(None),
     style: str = Query(None)
 ):

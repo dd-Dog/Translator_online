@@ -22,10 +22,19 @@ class QwenModel(BaseModel):
             **kwargs: 其他参数
         """
         super().__init__(model_name, api_key, **kwargs)
+        self.base_url = base_url  # 保存base_url以便后续查询
+        # 确保api_key不为None，避免OpenAI SDK回退到环境变量
+        if not api_key:
+            raise ValueError("Qwen API_KEY不能为空")
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url
         )
+        # 验证客户端实际使用的API_KEY（用于调试）
+        actual_api_key = getattr(self.client, 'api_key', None) or getattr(self.client, '_client', {}).get('api_key', None)
+        if actual_api_key and actual_api_key != api_key:
+            import warnings
+            warnings.warn(f"Qwen客户端实际使用的API_KEY与传入的不同！传入: {api_key[:8]}..., 实际: {actual_api_key[:8] if actual_api_key else 'None'}...")
     
     async def translate(self, request: TranslationRequest) -> TranslationResponse:
         """
@@ -62,10 +71,15 @@ class QwenModel(BaseModel):
             )
             
         except Exception as e:
+            error_msg = str(e)
+            # 检查是否是API_KEY相关的错误
+            if "401" in error_msg or "Unauthorized" in error_msg or "Invalid API key" in error_msg:
+                print(f"[Qwen API错误] API_KEY验证失败！使用的API_KEY: {self.api_key[:8]}...")
+                print(f"[Qwen API错误] 错误详情: {error_msg}")
             return TranslationResponse(
                 translated_text="",
                 model_name=self.model_name,
-                error=str(e)
+                error=error_msg
             )
     
     def _build_prompt(self, request: TranslationRequest) -> str:

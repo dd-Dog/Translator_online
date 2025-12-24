@@ -24,6 +24,13 @@ async def translate(request: Request, translate_request: TranslateRequest):
     创建翻译任务
     """
     try:
+        # 调试：打印接收到的请求数据
+        import json
+        print(f"[API调试] 接收到的model_configs: {translate_request.model_configs}")
+        if translate_request.model_configs:
+            for stage, config in translate_request.model_configs.items():
+                print(f"[API调试] {stage}: model_type={config.model_type if hasattr(config, 'model_type') else 'N/A'}, api_key长度={len(config.api_key) if hasattr(config, 'api_key') else 0}")
+        
         # 创建任务
         task_id = task_manager.create_task(translate_request)
         

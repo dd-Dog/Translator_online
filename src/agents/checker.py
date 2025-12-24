@@ -51,6 +51,15 @@ class Checker:
         
         response = await self.model.translate(request)
         
+        # 检查API调用是否失败
+        if response.error:
+            # API调用失败，不应该fallback，应该抛出错误
+            raise RuntimeError(f"Checker API调用失败: {response.error}")
+        
+        # 如果返回的文本为空，也视为失败
+        if not response.translated_text or not response.translated_text.strip():
+            raise RuntimeError("Checker API返回空结果，可能是API_KEY无效或API调用失败")
+        
         # 解析检查报告
         report = self._parse_check_response(response.translated_text, segment_id)
         

@@ -75,6 +75,17 @@ models:
       temperature: 0.3
       max_tokens: 2000
   
+  # 豆包 (Doubao) - 字节跳动大模型
+  doubao:
+    enabled: true
+    provider: "doubao"
+    model: "doubao-pro-32k"  # 可选: doubao-lite-4k, doubao-pro-32k, doubao-pro-128k
+    api_key_env: "DOUBAO_API_KEY"
+    base_url: "https://ark.cn-beijing.volces.com/api/v3"
+    params:
+      temperature: 0.3
+      max_tokens: 2000
+  
   # Claude (可选)
   # 通过OpenRouter调用（国内可用）
   claude:

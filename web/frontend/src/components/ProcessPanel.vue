@@ -20,10 +20,14 @@
             <div class="log-content">
               <el-tag :type="getLogType(log.type)" size="small">{{ log.stage }}</el-tag>
               <span class="log-message">{{ log.message }}</span>
+              <el-tag v-if="log.model" type="info" size="small" style="margin-left: 8px;">{{ log.model }}</el-tag>
             </div>
             <!-- 显示翻译结果 -->
             <div v-if="log.translatedText" class="log-translation">
-              <div class="translation-label">翻译结果：</div>
+              <div class="translation-label">
+                翻译结果：
+                <span v-if="log.model" class="model-label">[模型: {{ log.model }}]</span>
+              </div>
               <div class="translation-text">{{ log.translatedText }}</div>
             </div>
           </div>
@@ -207,6 +211,12 @@ const getLogType = (type) => {
   color: #909399;
   margin-bottom: 5px;
   font-weight: 500;
+}
+
+.model-label {
+  color: #409eff;
+  font-weight: 600;
+  margin-left: 8px;
 }
 
 .translation-text {
