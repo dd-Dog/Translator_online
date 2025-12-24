@@ -42,8 +42,13 @@ app.add_middleware(
 )
 
 # 安全中间件
-if security_config.ALLOWED_IPS:
-    app.add_middleware(IPWhitelistMiddleware, allowed_ips=security_config.ALLOWED_IPS)
+# 只有当ALLOWED_IPS不为空时才启用IP白名单
+allowed_ips = security_config.ALLOWED_IPS
+if allowed_ips:
+    app.add_middleware(IPWhitelistMiddleware, allowed_ips=allowed_ips)
+    print(f"🔒 IP白名单中间件已启用: {allowed_ips}")
+else:
+    print("⚠️  IP白名单中间件未启用（允许所有IP访问）")
 
 if security_config.USE_TOKEN_AUTH:
     app.add_middleware(TokenAuthMiddleware)

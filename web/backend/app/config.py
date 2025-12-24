@@ -23,11 +23,25 @@ class SecurityConfig:
     """安全配置"""
     
     # 访问控制
-    ALLOWED_IPS: List[str] = [
-        "127.0.0.1",
-        "192.168.1.0/24",  # 内网段，根据实际情况修改
-        "10.0.0.0/8",      # 内网段
-    ]
+    # 从环境变量读取，如果未设置则使用默认值
+    # 格式：ALLOWED_IPS=127.0.0.1,192.168.1.0/24,180.213.207.217
+    # 设置为空字符串或 "none" 则禁用IP白名单
+    # 注意：这里使用类方法，在实例化时动态读取，确保.env已加载
+    @classmethod
+    def _get_allowed_ips(cls) -> List[str]:
+        """动态获取允许的IP列表"""
+        _allowed_ips_env = os.getenv("ALLOWED_IPS", "")
+        if not _allowed_ips_env or _allowed_ips_env.lower().strip() in ["none", "false", "disable", ""]:
+            return []
+        # 过滤空字符串
+        ips = [ip.strip() for ip in _allowed_ips_env.split(",") if ip.strip()]
+        return ips if ips else []
+    
+    # 类属性，延迟计算
+    @property
+    def ALLOWED_IPS(self) -> List[str]:
+        """允许的IP列表（动态读取）"""
+        return self._get_allowed_ips()
     
     # 请求限制
     RATE_LIMIT_TRANSLATE: str = "10/minute"
@@ -58,6 +72,13 @@ class SecurityConfig:
         self._deepseek_key = os.getenv("DEEPSEEK_API_KEY")
         self._shared_token = os.getenv("SHARED_TOKEN", "")
         self._env = os.getenv("ENV", "development")
+        # 调试：打印IP白名单配置
+        allowed_ips = self.ALLOWED_IPS
+        allowed_ips_env = os.getenv("ALLOWED_IPS", "未设置")
+        if allowed_ips:
+            print(f"🔒 IP白名单配置: {allowed_ips} (从环境变量: {allowed_ips_env})")
+        else:
+            print(f"⚠️  IP白名单已禁用 (环境变量: {allowed_ips_env})")
     
     @property
     def OPENROUTER_API_KEY(self) -> Optional[str]:
@@ -104,7 +125,9 @@ class SecurityConfig:
         
         env = os.getenv("ENV", "development")
         shared_token = os.getenv("SHARED_TOKEN", "")
-        if env == "production" and not shared_token and not cls.ALLOWED_IPS:
+        # 使用类方法获取ALLOWED_IPS
+        allowed_ips = cls._get_allowed_ips()
+        if env == "production" and not shared_token and not allowed_ips:
             errors.append("生产环境必须配置访问控制（IP白名单或Token）")
         return errors
 
