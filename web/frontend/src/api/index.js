@@ -1,7 +1,29 @@
 import axios from 'axios'
 
+// 自动检测API地址
+// 开发环境：使用localhost
+// 生产环境：使用当前域名（同源）或环境变量配置
+const getApiBaseURL = () => {
+  // 优先使用环境变量
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL
+  }
+  
+  // 如果是生产环境（非localhost），使用当前域名
+  const currentHost = window.location.hostname
+  const currentPort = window.location.port
+  if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+    // 使用当前协议和域名，端口8000（或从环境变量读取）
+    const apiPort = import.meta.env.VITE_API_PORT || '8000'
+    return `${window.location.protocol}//${currentHost}:${apiPort}`
+  }
+  
+  // 默认开发环境
+  return 'http://localhost:8000'
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  baseURL: getApiBaseURL(),
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
