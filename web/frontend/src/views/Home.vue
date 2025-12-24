@@ -135,6 +135,7 @@ import { configAPI } from '../api/config'
 import { ElMessage } from 'element-plus'
 import ArchitecturePanel from '../components/ArchitecturePanel.vue'
 import ProcessPanel from '../components/ProcessPanel.vue'
+import { recognizeLanguage, getSupportedLanguages } from '../utils/languageMapper'
 
 const translationStore = useTranslationStore()
 const evaluationStore = useEvaluationStore()
