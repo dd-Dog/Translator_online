@@ -68,3 +68,22 @@ reports/*.md
 # datasets/  # 已启用，允许推送数据集
 results/
 
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.DS_Store
+dist/
+dist-ssr/
+*.local
+
+# Web前端构建产物
+web/frontend/node_modules/
+web/frontend/dist/
+web/frontend/.vite/
+web/backend/data/*.jsonl
+web/backend/data/*.json
+!web/backend/data/.gitkeep
+
