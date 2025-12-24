@@ -1,0 +1,312 @@
+<template>
+  <div class="home-container">
+    <el-row :gutter="20" class="home-layout">
+      <!-- 左侧：架构面板 -->
+      <el-col :span="6" class="left-panel">
+        <ArchitecturePanel 
+          :current-stage="translationStore.currentStage" 
+          :model-config="modelConfig"
+        />
+      </el-col>
+      
+      <!-- 中间：翻译功能区域 -->
+      <el-col :span="10" class="center-panel">
+        <el-card class="translation-card">
+          <template #header>
+            <div class="card-header">
+              <span>文本翻译</span>
+            </div>
+          </template>
+          
+          <!-- 翻译表单 -->
+          <el-form :model="form" label-width="100px" size="default">
+            <el-form-item label="源语言">
+              <el-select v-model="form.sourceLang" style="width: 100%">
+                <el-option label="自动检测" value="auto" />
+                <el-option label="英语" value="en" />
+                <el-option label="日语" value="ja" />
+                <el-option label="法语" value="fr" />
+                <el-option label="德语" value="de" />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="目标语言">
+              <el-select v-model="form.targetLang" style="width: 100%">
+                <el-option label="中文" value="zh" />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="翻译风格">
+              <el-select v-model="form.style" style="width: 100%">
+                <el-option
+                  v-for="style in styles"
+                  :key="style.id"
+                  :label="style.name"
+                  :value="style.id"
+                />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="待翻译文本">
+              <el-input
+                v-model="form.text"
+                type="textarea"
+                :rows="6"
+                placeholder="请输入要翻译的文本..."
+                :maxlength="10000"
+                show-word-limit
+              />
+            </el-form-item>
+            
+            <el-form-item>
+              <el-button
+                type="primary"
+                @click="handleTranslate"
+                :loading="translationStore.status === 'processing'"
+                :disabled="!form.text.trim()"
+                size="default"
+              >
+                开始翻译
+              </el-button>
+              <el-button @click="handleReset" size="default">重置</el-button>
+            </el-form-item>
+          </el-form>
+          
+          <!-- 进度显示 -->
+          <div v-if="translationStore.status === 'processing'" class="progress-section">
+            <el-progress
+              :percentage="translationStore.progress"
+              :status="translationStore.status === 'error' ? 'exception' : undefined"
+            />
+            <p class="progress-text">{{ translationStore.currentStage }}</p>
+          </div>
+          
+          <!-- 翻译结果 -->
+          <div v-if="translationStore.result" class="result-section">
+            <el-divider>翻译结果</el-divider>
+            <div class="result-text">
+              {{ translationStore.result.translated_text }}
+            </div>
+            
+            <div class="result-actions">
+              <el-button @click="handleCopy" size="small">复制译文</el-button>
+              <el-button
+                @click="handleEvaluate"
+                :loading="evaluationStore.isEvaluating"
+                size="small"
+                type="success"
+              >
+                开始评估
+              </el-button>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      
+      <!-- 右侧：过程面板 -->
+      <el-col :span="8" class="right-panel">
+        <ProcessPanel
+          :model-config="modelConfig"
+          :translation-logs="translationStore.translationLogs"
+          :evaluation-logs="evaluationStore.evaluationLogs"
+          :is-evaluating="evaluationStore.isEvaluating"
+          :evaluation-result="evaluationStore.evaluationResult"
+        />
+      </el-col>
+    </el-row>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useTranslationStore } from '../stores/translation'
+import { useEvaluationStore } from '../stores/evaluation'
+import { configAPI } from '../api/config'
+import { ElMessage } from 'element-plus'
+import ArchitecturePanel from '../components/ArchitecturePanel.vue'
+import ProcessPanel from '../components/ProcessPanel.vue'
+
+const translationStore = useTranslationStore()
+const evaluationStore = useEvaluationStore()
+
+const form = ref({
+  text: '',
+  sourceLang: 'auto',
+  targetLang: 'zh',
+  style: 'general'
+})
+
+const styles = ref([])
+const modelConfig = ref({})
+
+onMounted(async () => {
+  // 加载翻译风格
+  try {
+    styles.value = await configAPI.getStyles()
+  } catch (error) {
+    console.error('加载风格失败:', error)
+  }
+  
+  // 加载模型配置
+  try {
+    const config = await configAPI.getModels()
+    modelConfig.value = config.models || {}
+  } catch (error) {
+    console.error('加载模型配置失败:', error)
+  }
+})
+
+onUnmounted(() => {
+  translationStore.reset()
+  evaluationStore.reset()
+})
+
+const handleTranslate = async () => {
+  if (!form.value.text.trim()) {
+    ElMessage.warning('请输入要翻译的文本')
+    return
+  }
+  
+  await translationStore.translate(form.value.text, {
+    sourceLang: form.value.sourceLang,
+    targetLang: form.value.targetLang,
+    style: form.value.style
+  })
+}
+
+const handleReset = () => {
+  form.value.text = ''
+  translationStore.reset()
+  evaluationStore.reset()
+}
+
+const handleCopy = () => {
+  if (translationStore.result) {
+    navigator.clipboard.writeText(translationStore.result.translated_text)
+    ElMessage.success('已复制到剪贴板')
+  }
+}
+
+const handleEvaluate = async () => {
+  if (!translationStore.result || !translationStore.sourceText) {
+    ElMessage.warning('请先完成翻译')
+    return
+  }
+  
+  await evaluationStore.evaluate(
+    translationStore.sourceText,
+    translationStore.result.translated_text
+  )
+  
+  // 如果评估完成且有结果，保存到历史记录
+  if (translationStore.currentTask && evaluationStore.evaluationResult) {
+    try {
+      const { historyAPI } = await import('../api/history')
+      await historyAPI.updateEvaluation(translationStore.currentTask, evaluationStore.evaluationResult)
+    } catch (error) {
+      console.error('保存评估结果失败:', error)
+    }
+  }
+}
+</script>
+
+<style scoped>
+.home-container {
+  height: calc(100vh - 120px);
+  padding: 0;
+}
+
+.home-layout {
+  height: 100%;
+}
+
+.left-panel,
+.center-panel,
+.right-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.translation-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.translation-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-section {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.progress-text {
+  margin-top: 10px;
+  text-align: center;
+  color: #606266;
+  font-size: 13px;
+}
+
+.result-section {
+  margin-top: 20px;
+  flex: 1;
+}
+
+.result-text {
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  line-height: 1.8;
+  font-size: 14px;
+  min-height: 80px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.quality-score {
+  margin-top: 15px;
+}
+
+.score-item {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.score-label {
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #606266;
+  font-size: 13px;
+}
+
+.result-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.card-header {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* 确保面板高度一致 */
+:deep(.el-card) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+}
+</style>

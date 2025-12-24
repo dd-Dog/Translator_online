@@ -51,8 +51,52 @@ class TranslatorA:
         
         response = await self.model.translate(request)
         
+        # 调试：记录原始响应和错误
+        if not response.translated_text or not response.translated_text.strip():
+            import sys
+            from pathlib import Path
+            project_root = Path(__file__).parent.parent.parent
+            sys.path.insert(0, str(project_root))
+            try:
+                from loguru import logger
+            except ImportError:
+                logger = None
+            
+            if logger:
+                logger.warning(f"[TranslatorA] 原始响应为空或仅包含空白字符")
+                logger.warning(f"[TranslatorA] 使用模型: {response.model_name if hasattr(response, 'model_name') else '未知'}")
+                if hasattr(response, 'error') and response.error:
+                    logger.error(f"[TranslatorA] API错误信息: {response.error}")
+                    # 检查常见的错误类型
+                    error_str = str(response.error)
+                    if '402' in error_str or 'Insufficient Balance' in error_str or '余额不足' in error_str:
+                        logger.error(f"[TranslatorA] ⚠️  API余额不足！请检查账户余额并充值")
+                    elif '401' in error_str or 'Unauthorized' in error_str or 'Invalid API key' in error_str:
+                        logger.error(f"[TranslatorA] ⚠️  API密钥无效！请检查.env文件中的API密钥配置")
+                    elif '429' in error_str or 'Rate limit' in error_str:
+                        logger.error(f"[TranslatorA] ⚠️  请求频率过高！请稍后重试")
+                    elif '500' in error_str or 'Internal Server Error' in error_str:
+                        logger.error(f"[TranslatorA] ⚠️  服务器内部错误！请稍后重试")
+                    else:
+                        logger.error(f"[TranslatorA] ⚠️  未知错误，请检查错误信息")
+                else:
+                    logger.warning(f"[TranslatorA] response.translated_text: {repr(response.translated_text)}")
+        
         # 解析翻译结果和自检报告
         translated_text, self_check = self._parse_response(response.translated_text, text)
+        
+        # 如果解析后仍为空，使用原始响应的第一行
+        if not translated_text or not translated_text.strip():
+            if response.translated_text:
+                # 尝试直接使用原始响应
+                translated_text = response.translated_text.strip()
+                # 如果包含"翻译："，尝试提取
+                if "翻译" in translated_text:
+                    lines = translated_text.split('\n')
+                    for line in lines:
+                        if "翻译" in line:
+                            translated_text = line.split("翻译")[-1].split("：")[-1].split(":")[-1].strip()
+                            break
         
         return TranslationDraft(
             translated_text=translated_text,
@@ -100,9 +144,26 @@ class TranslatorA:
         """解析响应，提取翻译和自检报告"""
         import re
         
+        if not response_text or not response_text.strip():
+            return "", None
+        
         # 提取翻译结果
         translation_match = re.search(r'翻译[：:]\s*(.+?)(?=自检报告|$)', response_text, re.DOTALL)
-        translated_text = translation_match.group(1).strip() if translation_match else response_text.split('\n')[0].strip()
+        if translation_match:
+            translated_text = translation_match.group(1).strip()
+        else:
+            # 如果没有找到"翻译："标记，尝试其他方式
+            # 先尝试第一行
+            first_line = response_text.split('\n')[0].strip()
+            if first_line and len(first_line) > 0:
+                translated_text = first_line
+            else:
+                # 如果第一行也是空的，尝试整个文本
+                translated_text = response_text.strip()
+        
+        # 如果还是空的，返回空字符串
+        if not translated_text:
+            translated_text = ""
         
         # 提取自检报告
         self_check = None
