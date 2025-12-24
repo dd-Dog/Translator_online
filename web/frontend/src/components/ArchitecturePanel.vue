@@ -3,6 +3,14 @@
     <template #header>
       <div class="card-header">
         <span>翻译Agent架构</span>
+        <el-button 
+          type="text" 
+          size="small" 
+          @click="loadDefaultConfig"
+          style="float: right; padding: 0;"
+        >
+          加载默认配置
+        </el-button>
       </div>
     </template>
     
@@ -311,6 +319,37 @@ watch(() => props.modelConfig, (newConfig) => {
     notifyAndSave()
   }
 }, { deep: true })
+
+// 加载默认配置文件
+const loadDefaultConfig = async () => {
+  try {
+    const response = await fetch('/model-config.example.json')
+    if (response.ok) {
+      const defaultConfig = await response.json()
+      // 合并默认配置，保留已有的API_KEY（如果已配置）
+      Object.keys(defaultConfig).forEach(stage => {
+        if (defaultConfig[stage]) {
+          modelConfigs.value[stage].model_type = defaultConfig[stage].model_type || modelConfigs.value[stage].model_type
+          // 只有当本地没有配置API_KEY时，才使用默认配置中的（通常是占位符）
+          if (!modelConfigs.value[stage].api_key || modelConfigs.value[stage].api_key === '') {
+            const defaultKey = defaultConfig[stage].api_key || ''
+            // 如果默认配置中的key不是占位符，才使用
+            if (defaultKey && !defaultKey.includes('your-') && !defaultKey.includes('here')) {
+              modelConfigs.value[stage].api_key = defaultKey
+            }
+          }
+        }
+      })
+      notifyAndSave()
+      ElMessage.success('默认配置已加载')
+    } else {
+      ElMessage.warning('默认配置文件不存在，请手动配置')
+    }
+  } catch (error) {
+    console.error('加载默认配置失败:', error)
+    ElMessage.error('加载默认配置失败，请检查文件是否存在')
+  }
+}
 
 onMounted(() => {
   // 初始化时通知父组件

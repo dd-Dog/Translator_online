@@ -1,0 +1,27 @@
+{
+  "planner": {
+    "model_type": "deepseek",
+    "api_key": "sk-baf94836e0a74645a7fa00556258a8b1"
+  },
+  "translator_a": {
+    "model_type": "deepseek",
+    "api_key": "sk-baf94836e0a74645a7fa00556258a8b1"
+  },
+  "translator_b": {
+    "model_type": "qwen",
+    "api_key": "sk-24e374da9baf4afbba88516ab9ee79a5"
+  },
+  "checker": {
+    "model_type": "deepseek",
+    "api_key": "sk-baf94836e0a74645a7fa00556258a8b1"
+  },
+  "stylist": {
+    "model_type": "qwen",
+    "api_key": "sk-24e374da9baf4afbba88516ab9ee79a5"
+  },
+  "aggregator": {
+    "model_type": "deepseek",
+    "api_key": "sk-baf94836e0a74645a7fa00556258a8b1"
+  }
+}
+

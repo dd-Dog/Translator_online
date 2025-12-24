@@ -22,13 +22,22 @@
           <!-- 翻译表单 -->
           <el-form :model="form" label-width="100px" size="default">
             <el-form-item label="源语言">
-              <el-select v-model="form.sourceLang" style="width: 100%">
-                <el-option label="自动检测" value="auto" />
-                <el-option label="英语" value="en" />
-                <el-option label="日语" value="ja" />
-                <el-option label="法语" value="fr" />
-                <el-option label="德语" value="de" />
-              </el-select>
+              <el-autocomplete
+                v-model="form.sourceLang"
+                :fetch-suggestions="queryLanguage"
+                placeholder="输入语言（支持简写/全称/中文，如：en/english/英语）"
+                style="width: 100%"
+                clearable
+                @select="handleLanguageSelect"
+              >
+                <template #default="{ item }">
+                  <div class="language-option">
+                    <span class="language-code">{{ item.code }}</span>
+                    <span class="language-name">{{ item.name }}</span>
+                    <span class="language-english">{{ item.english }}</span>
+                  </div>
+                </template>
+              </el-autocomplete>
             </el-form-item>
             
             <el-form-item label="目标语言">
@@ -167,10 +176,47 @@ const handleModelConfigsUpdate = (configs) => {
   currentModelConfigs.value = configs
 }
 
+// 语言自动完成
+const supportedLanguages = getSupportedLanguages()
+
+const queryLanguage = (queryString, cb) => {
+  const results = queryString
+    ? supportedLanguages.filter(lang => 
+        lang.code.toLowerCase().includes(queryString.toLowerCase()) ||
+        lang.name.includes(queryString) ||
+        lang.english.toLowerCase().includes(queryString.toLowerCase())
+      )
+    : supportedLanguages
+  
+  // 如果用户输入的是自定义文本，也添加到结果中
+  if (queryString && queryString.trim() && !results.find(l => l.code === recognizeLanguage(queryString))) {
+    const recognized = recognizeLanguage(queryString)
+    if (recognized !== queryString.trim()) {
+      // 如果能识别，添加到结果中
+      const matched = supportedLanguages.find(l => l.code === recognized)
+      if (matched && !results.find(l => l.code === recognized)) {
+        results.unshift(matched)
+      }
+    }
+  }
+  
+  cb(results)
+}
+
+const handleLanguageSelect = (item) => {
+  form.value.sourceLang = item.code
+}
+
 const handleTranslate = async () => {
   if (!form.value.text.trim()) {
     ElMessage.warning('请输入要翻译的文本')
     return
+  }
+  
+  // 识别并规范化源语言
+  const recognizedLang = recognizeLanguage(form.value.sourceLang)
+  if (recognizedLang !== form.value.sourceLang) {
+    form.value.sourceLang = recognizedLang
   }
   
   // 检查是否所有阶段都配置了API_KEY
@@ -328,5 +374,27 @@ const handleEvaluate = async () => {
 :deep(.el-card__body) {
   flex: 1;
   overflow-y: auto;
+}
+
+.language-option {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.language-code {
+  font-weight: bold;
+  color: #409eff;
+  min-width: 40px;
+}
+
+.language-name {
+  flex: 1;
+  color: #303133;
+}
+
+.language-english {
+  color: #909399;
+  font-size: 12px;
 }
 </style>
