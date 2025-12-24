@@ -35,9 +35,28 @@ async def translate(request: Request, translate_request: TranslateRequest):
         task_id = task_manager.create_task(translate_request)
         
         # 延迟启动任务，给WebSocket连接建立的时间
+        # 增加等待时间，确保WebSocket连接已建立
         import asyncio
+        from app.utils.websocket_manager import ws_manager
+        
         async def delayed_start():
-            await asyncio.sleep(0.5)  # 等待0.5秒，确保WebSocket连接建立
+            # 等待WebSocket连接建立，最多等待3秒
+            max_wait = 3.0  # 最大等待时间（秒）
+            check_interval = 0.1  # 检查间隔（秒）
+            waited = 0.0
+            
+            while waited < max_wait:
+                # 检查是否有WebSocket连接
+                if task_id in ws_manager.connections and len(ws_manager.connections[task_id]) > 0:
+                    print(f"[API] WebSocket连接已建立，等待时间: {waited:.2f}秒")
+                    break
+                await asyncio.sleep(check_interval)
+                waited += check_interval
+            
+            if waited >= max_wait:
+                print(f"[API] 警告: 等待WebSocket连接超时（{max_wait}秒），但任务将继续执行")
+            
+            # 启动任务
             await task_manager.start_task(task_id)
         
         # 异步执行任务（延迟启动）

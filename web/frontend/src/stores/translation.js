@@ -21,7 +21,7 @@ export const useTranslationStore = defineStore('translation', {
       try {
         this.status = 'processing'
         this.progress = 0
-        this.currentStage = '创建任务...'
+        this.currentStage = '准备连接...'
         this.sourceText = text
         this.translationLogs = []
         this.stageResults = {} // 重置阶段结果
@@ -29,7 +29,6 @@ export const useTranslationStore = defineStore('translation', {
         // 添加初始日志
         this.addLog('info', '系统', '开始翻译任务...')
         
-        // 创建翻译任务
         // 确保model_configs格式正确
         let modelConfigsToSend = null
         if (options.modelConfigs && Object.keys(options.modelConfigs).length > 0) {
@@ -47,6 +46,8 @@ export const useTranslationStore = defineStore('translation', {
           console.log('[前端调试] 发送的model_configs:', modelConfigsToSend)
         }
         
+        // 先创建任务，获取task_id
+        this.currentStage = '创建任务...'
         const response = await translateAPI.createTask({
           text,
           source_lang: options.sourceLang || 'auto',
@@ -60,7 +61,7 @@ export const useTranslationStore = defineStore('translation', {
         this.currentTask = response.task_id
         this.addLog('success', '系统', '翻译任务已创建')
         
-        // 建立WebSocket连接（在任务开始前建立，确保不遗漏消息）
+        // 立即建立WebSocket连接（在任务开始前建立，确保不遗漏消息）
         // 自动检测WebSocket地址
         const getWsUrl = () => {
           // 优先使用环境变量
@@ -156,8 +157,18 @@ export const useTranslationStore = defineStore('translation', {
           this.wsClient?.close()
         })
         
-        // 连接WebSocket
-        await this.wsClient.connect()
+        // 连接WebSocket（等待连接建立）
+        this.currentStage = '建立连接...'
+        this.addLog('info', '系统', '正在建立WebSocket连接...')
+        
+        try {
+          await this.wsClient.connect()
+          this.addLog('success', '系统', 'WebSocket连接已建立')
+          console.log('WebSocket连接成功建立')
+        } catch (error) {
+          console.error('WebSocket连接失败:', error)
+          this.addLog('warning', '系统', 'WebSocket连接失败，将使用轮询模式')
+        }
         
         // 轮询获取结果（作为WebSocket的备用）
         this.pollResult()
