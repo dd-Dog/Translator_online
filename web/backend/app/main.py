@@ -33,13 +33,23 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # CORS配置
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=security_config.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 如果 ALLOWED_ORIGINS 包含 "*"，则允许所有源
+if "*" in security_config.ALLOWED_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,  # 使用 "*" 时不能使用 credentials
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=security_config.ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # 安全中间件
 # 只有当ALLOWED_IPS不为空时才启用IP白名单

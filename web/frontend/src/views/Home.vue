@@ -168,12 +168,9 @@ onMounted(async () => {
     console.error('加载模型配置失败:', error)
   }
   
-  // 自动加载默认配置（延迟一下，确保组件已挂载）
-  setTimeout(() => {
-    if (architecturePanelRef.value && architecturePanelRef.value.loadDefaultConfig) {
-      architecturePanelRef.value.loadDefaultConfig()
-    }
-  }, 100)
+  // 自动加载默认配置（通过直接调用，因为组件会自动加载）
+  // 注意：ArchitecturePanel 组件在 onMounted 时会自动调用 loadDefaultConfig
+  // 这里不需要手动调用，因为组件已经隐藏但仍在运行
 })
 
 onUnmounted(() => {
