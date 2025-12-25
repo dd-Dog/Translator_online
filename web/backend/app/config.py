@@ -55,13 +55,17 @@ class SecurityConfig:
     # CORS
     # 从环境变量读取允许的源，如果没有则使用默认值
     # 格式：ALLOWED_ORIGINS=http://example.com,http://example2.com
+    # 如果设置为 "*" 则允许所有源（不推荐生产环境）
     _allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
     ALLOWED_ORIGINS: List[str] = (
+        ["*"] if _allowed_origins_env.strip().lower() == "*" else
         _allowed_origins_env.split(",") if _allowed_origins_env else [
             "http://localhost:3000",
             "http://localhost:5173",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:5173",
+            "http://47.254.82.238:8088",  # 默认添加服务器前端地址
+            "http://47.254.82.238",       # 如果使用同一域名
         ]
     )
     

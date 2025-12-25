@@ -1,9 +1,10 @@
 <template>
   <div class="home-container">
     <el-row :gutter="20" class="home-layout">
-      <!-- 左侧：架构面板 -->
-      <el-col :span="6" class="left-panel">
+      <!-- 左侧：架构面板（已隐藏） -->
+      <el-col :span="0" class="left-panel" style="display: none;">
         <ArchitecturePanel 
+          ref="architecturePanelRef"
           :current-stage="translationStore.currentStage" 
           :model-config="modelConfig"
           @update:modelConfigs="handleModelConfigsUpdate"
@@ -11,7 +12,7 @@
       </el-col>
       
       <!-- 中间：翻译功能区域 -->
-      <el-col :span="10" class="center-panel">
+      <el-col :span="12" class="center-panel">
         <el-card class="translation-card">
           <template #header>
             <div class="card-header">
@@ -114,7 +115,7 @@
       </el-col>
       
       <!-- 右侧：过程面板 -->
-      <el-col :span="8" class="right-panel">
+      <el-col :span="12" class="right-panel">
         <ProcessPanel
           :model-config="modelConfig"
           :translation-logs="translationStore.translationLogs"
@@ -166,6 +167,13 @@ onMounted(async () => {
   } catch (error) {
     console.error('加载模型配置失败:', error)
   }
+  
+  // 自动加载默认配置（延迟一下，确保组件已挂载）
+  setTimeout(() => {
+    if (architecturePanelRef.value && architecturePanelRef.value.loadDefaultConfig) {
+      architecturePanelRef.value.loadDefaultConfig()
+    }
+  }, 100)
 })
 
 onUnmounted(() => {

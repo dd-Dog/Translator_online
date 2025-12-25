@@ -223,7 +223,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, defineExpose } from 'vue'
 import { ElMessage } from 'element-plus'
 
 const props = defineProps({
@@ -354,6 +354,14 @@ const loadDefaultConfig = async () => {
 onMounted(() => {
   // 初始化时通知父组件
   emit('update:modelConfigs', { ...modelConfigs.value })
+  
+  // 自动加载默认配置
+  loadDefaultConfig()
+})
+
+// 暴露方法给父组件调用
+defineExpose({
+  loadDefaultConfig
 })
 </script>
 
