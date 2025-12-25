@@ -64,21 +64,14 @@ export const useTranslationStore = defineStore('translation', {
         // 立即建立WebSocket连接（在任务开始前建立，确保不遗漏消息）
         // 自动检测WebSocket地址
         const getWsUrl = () => {
-          // 优先使用环境变量
+          // 显式环境变量（可选，给 Docker / 特殊部署用）
           if (import.meta.env.VITE_WS_BASE_URL) {
             return `${import.meta.env.VITE_WS_BASE_URL}/ws/translate/${response.task_id}`
           }
-          
-          // 如果是生产环境（非localhost），使用当前域名
-          const currentHost = window.location.hostname
-          if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
-            const apiPort = import.meta.env.VITE_API_PORT || '8000'
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-            return `${protocol}//${currentHost}:${apiPort}/ws/translate/${response.task_id}`
-          }
-          
-          // 默认开发环境
-          return `ws://localhost:8000/ws/translate/${response.task_id}`
+
+          // ⭐ 生产 & 开发统一：同源
+          const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+          return `${protocol}://${window.location.host}/ws/translate/${response.task_id}`
         }
         
         const wsUrl = getWsUrl()
