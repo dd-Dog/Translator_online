@@ -56,18 +56,34 @@ class SecurityConfig:
     # 从环境变量读取允许的源，如果没有则使用默认值
     # 格式：ALLOWED_ORIGINS=http://example.com,http://example2.com
     # 如果设置为 "*" 则允许所有源（不推荐生产环境）
-    _allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
-    ALLOWED_ORIGINS: List[str] = (
-        ["*"] if _allowed_origins_env.strip().lower() == "*" else
-        _allowed_origins_env.split(",") if _allowed_origins_env else [
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            "http://47.254.82.238:8088",  # 默认添加服务器前端地址
-            "http://47.254.82.238",       # 如果使用同一域名
-        ]
-    )
+    # 注意：这里使用类方法，在实例化时动态读取，确保.env已加载
+    @classmethod
+    def _get_allowed_origins(cls) -> List[str]:
+        """动态获取允许的源列表"""
+        _allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+        if not _allowed_origins_env:
+            return [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "http://47.254.82.238:8088",
+                "http://47.254.82.238",
+            ]
+        
+        # 处理 "*" 的情况
+        if _allowed_origins_env.strip().lower() == "*":
+            return ["*"]
+        
+        # 分割并过滤空字符串
+        origins = [origin.strip() for origin in _allowed_origins_env.split(",") if origin.strip()]
+        return origins if origins else ["*"]
+    
+    # 类属性，延迟计算
+    @property
+    def ALLOWED_ORIGINS(self) -> List[str]:
+        """允许的源列表（动态读取）"""
+        return self._get_allowed_origins()
     
     def __init__(self):
         # API密钥（必须从环境变量读取，在load_dotenv之后）
@@ -76,6 +92,7 @@ class SecurityConfig:
         self._deepseek_key = os.getenv("DEEPSEEK_API_KEY")
         self._shared_token = os.getenv("SHARED_TOKEN", "")
         self._env = os.getenv("ENV", "development")
+        
         # 调试：打印IP白名单配置
         allowed_ips = self.ALLOWED_IPS
         allowed_ips_env = os.getenv("ALLOWED_IPS", "未设置")
@@ -83,6 +100,11 @@ class SecurityConfig:
             print(f"🔒 IP白名单配置: {allowed_ips} (从环境变量: {allowed_ips_env})")
         else:
             print(f"⚠️  IP白名单已禁用 (环境变量: {allowed_ips_env})")
+        
+        # 调试：打印CORS配置
+        allowed_origins = self.ALLOWED_ORIGINS
+        allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "未设置")
+        print(f"🌐 CORS配置: {allowed_origins} (从环境变量: {allowed_origins_env})")
     
     @property
     def OPENROUTER_API_KEY(self) -> Optional[str]:

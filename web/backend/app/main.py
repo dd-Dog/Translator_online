@@ -93,6 +93,13 @@ async def startup():
     else:
         print("✅ 配置验证通过")
     
+    # 打印CORS配置详情
+    print("=" * 60)
+    print("🌐 CORS配置详情:")
+    print(f"  允许的源: {security_config.ALLOWED_ORIGINS}")
+    print(f"  环境变量: {os.getenv('ALLOWED_ORIGINS', '未设置')}")
+    print("=" * 60)
+    
     print(f"🚀 {app_config.APP_NAME} v{app_config.APP_VERSION} 启动成功")
     print(f"📝 API文档: http://localhost:8000/docs")
 
